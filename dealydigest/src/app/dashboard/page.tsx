@@ -72,6 +72,8 @@ export default function DashboardPage() {
     category: "Dining",
     description: "",
   });
+  const [dealsCategory, setDealsCategory] = useState<string>("all");
+  const [isDealsLoading, setIsDealsLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -179,6 +181,138 @@ export default function DashboardPage() {
       icon: <EntertainmentIcon className="h-4 w-4" />,
     },
   ];
+
+  // Define deal categories
+  const dealCategories = [
+    { id: "all", label: "All Deals" },
+    { id: "dining", label: "Dining" },
+    { id: "travel", label: "Travel" },
+    { id: "shopping", label: "Shopping" },
+    { id: "entertainment", label: "Entertainment" },
+  ];
+
+  // Sample deals data
+  const deals = [
+    {
+      id: "deal1",
+      title: "Earn 5% back on Chase Dining",
+      description: "Use your Chase Sapphire Reserve for dining purchases and earn 5% back.",
+      category: "dining",
+      expiryDate: "2025-06-30",
+      cardName: "Chase Sapphire Reserve",
+      imageUrl: "/images/dining.jpg",
+      discountValue: "5%",
+      specialTerms: "Valid at select restaurants only. Maximum cash back of $50 per month.",
+      isLimited: false,
+      isNewOffer: true,
+    },
+    {
+      id: "deal2",
+      title: "$50 off $200+ at United Airlines",
+      description: "Book a flight with your Chase Sapphire Reserve and get $50 off.",
+      category: "travel",
+      expiryDate: "2025-05-15",
+      cardName: "Chase Sapphire Reserve",
+      imageUrl: "/images/travel.jpg",
+      discountValue: "$50",
+      specialTerms: "Valid for flights booked directly with United Airlines. Minimum purchase of $200.",
+      isLimited: true,
+      isNewOffer: false,
+    },
+    {
+      id: "deal3",
+      title: "10% Back at Amazon",
+      description: "Limited time offer: Get 10% back on Amazon purchases with your Freedom Unlimited card.",
+      category: "shopping",
+      expiryDate: "2025-04-30",
+      cardName: "Freedom Unlimited",
+      imageUrl: "/images/shopping.jpg",
+      discountValue: "10%",
+      specialTerms: "Maximum cash back of $30. Valid for purchases made directly on Amazon.com.",
+      isLimited: true,
+      isNewOffer: true,
+    },
+    {
+      id: "deal4",
+      title: "3 Months Free Disney+",
+      description: "Subscribe to Disney+ and get 3 months free when you pay with your Chase card.",
+      category: "entertainment",
+      expiryDate: "2025-07-31",
+      cardName: "Any Chase Card",
+      imageUrl: "/images/streaming.jpg",
+      discountValue: "3 months",
+      specialTerms: "New Disney+ subscribers only. Subscription will auto-renew after free period.",
+      isLimited: false,
+      isNewOffer: true,
+    },
+    {
+      id: "deal5",
+      title: "2x Points at Gas Stations",
+      description: "Earn double points on all gas station purchases this month.",
+      category: "travel",
+      expiryDate: "2025-04-30",
+      cardName: "Freedom Unlimited",
+      imageUrl: "/images/gas.jpg",
+      discountValue: "2x",
+      specialTerms: "Automatic enrollment. Points awarded within 2 billing cycles.",
+      isLimited: true,
+      isNewOffer: false,
+    },
+    {
+      id: "deal6",
+      title: "15% Off at Whole Foods",
+      description: "Get 15% off your entire purchase at Whole Foods Market.",
+      category: "shopping",
+      expiryDate: "2025-05-31",
+      cardName: "Chase Sapphire Reserve",
+      imageUrl: "/images/grocery.jpg",
+      discountValue: "15%",
+      specialTerms: "Maximum discount of $30. In-store purchases only.",
+      isLimited: false,
+      isNewOffer: true,
+    },
+    {
+      id: "deal7",
+      title: "Free Concert Ticket",
+      description: "Buy one concert ticket and get one free at participating venues.",
+      category: "entertainment",
+      expiryDate: "2025-08-31",
+      cardName: "Any Chase Card",
+      imageUrl: "/images/concert.jpg",
+      discountValue: "BOGO",
+      specialTerms: "Available at select venues only. Limit one free ticket per cardholder.",
+      isLimited: true,
+      isNewOffer: false,
+    },
+    {
+      id: "deal8",
+      title: "20% Off at Cheesecake Factory",
+      description: "Enjoy 20% off your bill at The Cheesecake Factory.",
+      category: "dining",
+      expiryDate: "2025-06-15",
+      cardName: "Freedom Unlimited",
+      imageUrl: "/images/restaurant.jpg",
+      discountValue: "20%",
+      specialTerms: "Dine-in only. Cannot be combined with other offers.",
+      isLimited: false,
+      isNewOffer: true,
+    },
+  ];
+
+  // Format date string to a readable format
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(date);
+  };
+
+  // Filter deals by category
+  const filteredDeals = dealsCategory === "all" 
+    ? deals 
+    : deals.filter(deal => deal.category === dealsCategory);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -337,64 +471,102 @@ export default function DashboardPage() {
               )}
 
               {activeTab === "deals" && (
-                <div className="card p-6">
-                  <div className="space-y-6">
-                    <h2 className="text-xl font-medium">Available Deals</h2>
-                    <p className="text-gray-600">
-                      Your personalized deals will appear here based on your
-                      spending patterns and card benefits.
-                    </p>
-
-                    <div className="space-y-4">
-                      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                        <h3 className="mb-2 text-lg font-medium">
-                          Earn 5% back on Chase Dining
-                        </h3>
-                        <p className="mb-4 text-gray-600">
-                          Use your Chase Sapphire Reserve for dining purchases
-                          and earn 5% back.
-                        </p>
-                        <Link
-                          href="/deals/chase-dining"
-                          className="text-primary hover:text-primary-dark"
-                        >
-                          View Details
-                        </Link>
-                      </div>
-
-                      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                        <h3 className="mb-2 text-lg font-medium">
-                          $50 off $200+ at United Airlines
-                        </h3>
-                        <p className="mb-4 text-gray-600">
-                          Book a flight with your Chase Sapphire Reserve and get
-                          $50 off.
-                        </p>
-                        <Link
-                          href="/deals/united-discount"
-                          className="text-primary hover:text-primary-dark"
-                        >
-                          View Details
-                        </Link>
-                      </div>
-
-                      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                        <h3 className="mb-2 text-lg font-medium">
-                          10% Back at Amazon
-                        </h3>
-                        <p className="mb-4 text-gray-600">
-                          Limited time offer: Get 10% back on Amazon purchases
-                          with your Freedom Unlimited card.
-                        </p>
-                        <Link
-                          href="/deals/amazon-cashback"
-                          className="text-primary hover:text-primary-dark"
-                        >
-                          View Details
-                        </Link>
-                      </div>
-                    </div>
+                <div className="card p-6 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-primary">Available Deals</h2>
+                    <span className="bg-primary text-white text-sm px-3 py-1 rounded-full">
+                      {filteredDeals.length} Offers
+                    </span>
                   </div>
+                  
+                  <p className="text-gray-600">
+                    Exclusive offers and discounts based on your spending patterns and card benefits.
+                  </p>
+
+                  {/* Categories */}
+                  <div className="flex flex-wrap gap-2">
+                    {dealCategories.map((category) => (
+                      <button 
+                        key={category.id}
+                        onClick={() => setDealsCategory(category.id)}
+                        className={`px-3 py-1 text-sm rounded-full ${
+                          dealsCategory === category.id
+                            ? 'bg-primary text-white'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
+                      >
+                        {category.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Deals grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredDeals.map((deal) => (
+                      <div key={deal.id} className="border rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
+                        <div className="p-4 border-b">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold text-lg">{deal.title}</h3>
+                              <p className="text-sm text-gray-500">{deal.cardName}</p>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="font-bold text-primary text-xl">{deal.discountValue}</span>
+                              {deal.isNewOffer && (
+                                <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full mt-1">
+                                  New Offer
+                                </span>
+                              )}
+                              {deal.isLimited && (
+                                <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full mt-1">
+                                  Limited Time
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4">
+                          <p className="text-sm text-gray-600 mb-3">{deal.description}</p>
+                          
+                          <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
+                            <div className="flex items-center">
+                              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                              Active
+                            </div>
+                            <div>
+                              Expires: {formatDate(deal.expiryDate)}
+                            </div>
+                          </div>
+                          
+                          <div className="text-xs text-gray-500 mb-4 italic">
+                            {deal.specialTerms}
+                          </div>
+                          
+                          <Link
+                            href={`/deals/${deal.id}`}
+                            className="block w-full bg-primary text-white rounded-lg text-center px-3 py-2 text-sm hover:bg-primary-dark transition-colors"
+                          >
+                            View Details
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {filteredDeals.length === 0 && (
+                    <div className="text-center py-10 border border-gray-200 rounded-lg">
+                      <RecommendationIcon className="h-12 w-12 mx-auto opacity-20 mb-2" />
+                      <h3 className="text-lg font-medium">No deals available</h3>
+                      <p className="text-gray-500">No deals match your current filter</p>
+                      <button 
+                        onClick={() => setDealsCategory("all")}
+                        className="mt-3 px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark"
+                      >
+                        Show all deals
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
