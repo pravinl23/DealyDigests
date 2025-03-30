@@ -1,36 +1,46 @@
 import { NextResponse } from "next/server"
 import { mockDb } from "@/lib/mock-data"
 
-export async function GET(req: Request) {
+export async function GET(request: Request) {
   try {
-    // For the preview, we'll use a fixed user ID
-    const userId = "1" // Demo user ID
+    const url = new URL(request.url)
+    const userId = url.searchParams.get("userId")
+    const category = url.searchParams.get("category") || undefined
+    const limit = url.searchParams.get("limit") ? parseInt(url.searchParams.get("limit")!) : undefined
+    const offset = url.searchParams.get("offset") ? parseInt(url.searchParams.get("offset")!) : undefined
 
-    const { searchParams } = new URL(req.url)
-    const category = searchParams.get("category")
-    const limit = Number.parseInt(searchParams.get("limit") || "20")
-    const page = Number.parseInt(searchParams.get("page") || "1")
-    const offset = (page - 1) * limit
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 })
+    }
 
-    // Get deals
-    const { deals, total } = mockDb.findAllDeals({
-      category: category || undefined,
-      limit,
-      offset,
-    })
+    // Get deals from the mock database
+    const dealsResult = mockDb.findAllDeals({ category, limit, offset })
+
+    // Get user deals to check which ones are already claimed
+    const userDeals = mockDb.findUserDealsByUserId(userId)
+    const claimedDealIds = new Set(userDeals.map(ud => ud.dealId))
+
+    // Format deals for the client
+    const formattedDeals = dealsResult.deals.map(deal => ({
+      ...deal,
+      validFrom: deal.validFrom.toISOString(),
+      validTo: deal.validTo.toISOString(),
+      createdAt: deal.createdAt.toISOString(),
+      updatedAt: deal.updatedAt.toISOString(),
+      isClaimed: claimedDealIds.has(deal.id),
+    }))
 
     return NextResponse.json({
-      deals,
-      pagination: {
-        total,
-        pages: Math.ceil(total / limit),
-        page,
-        limit,
-      },
+      success: true,
+      deals: formattedDeals,
+      total: dealsResult.total
     })
   } catch (error) {
     console.error("Error fetching deals:", error)
-    return NextResponse.json({ error: "Failed to fetch deals" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to fetch deals" },
+      { status: 500 }
+    )
   }
 }
 

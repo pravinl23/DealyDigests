@@ -53,6 +53,7 @@ export interface UserDeal {
   dealId: string
   clicked: boolean
   claimed: boolean
+  knotConnected: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -90,6 +91,16 @@ export interface EntertainmentEvent {
   imageUrl?: string
   description: string
   relatedTo?: string[] // IDs of Netflix/Spotify content this event is related to
+}
+
+export interface MerchandiseItem {
+  id: string
+  title: string
+  type: "figurine" | "clothing" | "poster" | "collectible" | "accessory"
+  description: string
+  price: number
+  imageUrl?: string
+  relatedTo?: string[] // IDs of Netflix/Spotify content this merchandise is related to
 }
 
 // Mock data stores
@@ -531,6 +542,7 @@ export const userDeals: UserDeal[] = [
     dealId: "1",
     clicked: true,
     claimed: true,
+    knotConnected: true,
     createdAt: new Date("2025-03-10"),
     updatedAt: new Date("2025-03-10"),
   },
@@ -540,8 +552,29 @@ export const userDeals: UserDeal[] = [
     dealId: "3",
     clicked: true,
     claimed: true,
+    knotConnected: true,
     createdAt: new Date("2025-03-15"),
     updatedAt: new Date("2025-03-15"),
+  },
+  {
+    id: "3",
+    userId: "1",
+    dealId: "7",
+    clicked: true,
+    claimed: true,
+    knotConnected: true,
+    createdAt: new Date("2025-03-16"),
+    updatedAt: new Date("2025-03-16"),
+  },
+  {
+    id: "4",
+    userId: "1",
+    dealId: "8",
+    clicked: true,
+    claimed: true,
+    knotConnected: true,
+    createdAt: new Date("2025-03-17"),
+    updatedAt: new Date("2025-03-17"),
   },
 ]
 
@@ -710,6 +743,54 @@ export const entertainmentEvents: EntertainmentEvent[] = [
   }
 ];
 
+export const merchandiseItems: MerchandiseItem[] = [
+  {
+    id: "m1",
+    title: "Stranger Things Demogorgon Figurine",
+    type: "figurine",
+    description: "Detailed collectible figurine of the Demogorgon from Stranger Things. Perfect for fans of the show!",
+    price: 29.99,
+    imageUrl: "https://example.com/demogorgon-figurine.jpg",
+    relatedTo: ["n1"] // Related to Stranger Things
+  },
+  {
+    id: "m2",
+    title: "Hamilton Broadway Poster",
+    type: "poster",
+    description: "Official Broadway poster from the hit musical Hamilton. Signed by the original cast.",
+    price: 49.99,
+    imageUrl: "https://example.com/hamilton-poster.jpg",
+    relatedTo: ["n3", "s3"] // Related to Hamilton watch/listen history
+  },
+  {
+    id: "m3",
+    title: "Queen 'A Kind of Magic' Vinyl",
+    type: "collectible",
+    description: "Limited edition vinyl recording of Queen's 'A Kind of Magic' album. A must-have for any Queen fan.",
+    price: 34.99,
+    imageUrl: "https://example.com/queen-vinyl.jpg",
+    relatedTo: ["s1"] // Related to Bohemian Rhapsody listen history
+  },
+  {
+    id: "m4",
+    title: "My Chemical Romance Welcome to the Black Parade T-Shirt",
+    type: "clothing",
+    description: "Official band merchandise T-shirt with the iconic Black Parade design. Made from premium cotton.",
+    price: 24.99,
+    imageUrl: "https://example.com/mcr-tshirt.jpg",
+    relatedTo: ["s2"] // Related to Black Parade listen history
+  },
+  {
+    id: "m5",
+    title: "La La Land Piano Sheet Music Collection",
+    type: "collectible",
+    description: "Complete sheet music collection from the La La Land soundtrack, including 'City of Stars' and more.",
+    price: 19.99,
+    imageUrl: "https://example.com/lalaland-music.jpg",
+    relatedTo: ["n5", "s4"] // Related to La La Land watch history and City of Stars
+  }
+];
+
 // Mock data access functions
 export const mockDb = {
   // User functions
@@ -801,7 +882,7 @@ export const mockDb = {
         deal: deals.find((d) => d.id === ud.dealId)!,
       }))
   },
-  createOrUpdateUserDeal: (data: { userId: string; dealId: string; clicked: boolean; claimed: boolean }) => {
+  createOrUpdateUserDeal: (data: { userId: string; dealId: string; clicked: boolean; claimed: boolean; knotConnected?: boolean }) => {
     const existingIndex = userDeals.findIndex((ud) => ud.userId === data.userId && ud.dealId === data.dealId)
 
     if (existingIndex >= 0) {
@@ -815,12 +896,55 @@ export const mockDb = {
       const newUserDeal = {
         id: String(userDeals.length + 1),
         ...data,
+        knotConnected: data.knotConnected || false,
         createdAt: new Date(),
         updatedAt: new Date(),
       }
       userDeals.push(newUserDeal)
       return newUserDeal
     }
+  },
+
+  // Find Knot connected companies for a user
+  getUserKnotConnections: (userId: string) => {
+    const userConnectedDeals = userDeals
+      .filter(ud => ud.userId === userId && ud.knotConnected)
+      .map(ud => {
+        const deal = deals.find(d => d.id === ud.dealId);
+        return deal?.merchant || null;
+      })
+      .filter(merchant => merchant !== null);
+    
+    return Array.from(new Set(userConnectedDeals));
+  },
+
+  // Mark a company as connected via Knot
+  markCompanyAsKnotConnected: (userId: string, merchantName: string) => {
+    // Find all deals from this merchant
+    const merchantDeals = deals.filter(deal => deal.merchant === merchantName);
+    
+    // Update all user deals for these merchant deals
+    merchantDeals.forEach(deal => {
+      const existingUserDeal = userDeals.find(ud => ud.userId === userId && ud.dealId === deal.id);
+      
+      if (existingUserDeal) {
+        existingUserDeal.knotConnected = true;
+        existingUserDeal.updatedAt = new Date();
+      } else {
+        userDeals.push({
+          id: String(userDeals.length + 1),
+          userId,
+          dealId: deal.id,
+          clicked: true,
+          claimed: true,
+          knotConnected: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+    });
+    
+    return true;
   },
 
   // Analytics functions
@@ -974,6 +1098,38 @@ export const mockDb = {
       ...event,
       date: event.date.toISOString()
     }));
+  },
+
+  // New method for merchandise-related data
+  getRecommendedMerchandise: (userId: string) => {
+    const netflix = netflixHistory.filter(item => item.userId === userId);
+    const spotify = spotifyHistory.filter(item => item.userId === userId);
+    
+    // Collect all content IDs that might relate to merchandise
+    const contentIds = [
+      ...netflix.map(item => item.id),
+      ...spotify.map(item => item.id)
+    ];
+    
+    // Find merchandise related to the user's content
+    const relatedMerchandise = merchandiseItems.filter(item => {
+      if (!item.relatedTo) return false;
+      return item.relatedTo.some(id => contentIds.includes(id));
+    });
+    
+    // If we don't have enough related merchandise, add some random ones
+    let recommendedMerchandise = [...relatedMerchandise];
+    
+    if (recommendedMerchandise.length < 3) {
+      const randomMerchandise = merchandiseItems
+        .filter(item => !recommendedMerchandise.includes(item))
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3 - recommendedMerchandise.length);
+      
+      recommendedMerchandise = [...recommendedMerchandise, ...randomMerchandise];
+    }
+    
+    return recommendedMerchandise;
   }
 }
 

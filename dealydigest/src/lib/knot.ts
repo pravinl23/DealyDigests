@@ -71,6 +71,50 @@ export class KnotClient {
       ],
     }
   }
+
+  // New method to mark a company as connected through Knot
+  async connectCompany(userId: string, merchantName: string) {
+    // In a real implementation, this would connect to Knot API to establish a connection
+    // Here we're just returning a mock success response
+    return {
+      success: true,
+      user_id: userId,
+      merchant: merchantName,
+      connection_id: `knot-connection-${merchantName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+      connected_at: new Date().toISOString()
+    }
+  }
+  
+  // Get connected companies for user
+  async getConnectedCompanies(userId: string) {
+    // In a real implementation, this would fetch from Knot API
+    // For now, return hardcoded data based on our mock userDeals
+    return {
+      success: true,
+      connected_companies: [
+        {
+          merchant: "DoorDash",
+          connection_id: `knot-connection-doordash-${Date.now()}`,
+          connected_at: new Date("2025-03-10").toISOString()
+        },
+        {
+          merchant: "Walmart",
+          connection_id: `knot-connection-walmart-${Date.now()}`,
+          connected_at: new Date("2025-03-15").toISOString()
+        },
+        {
+          merchant: "Netflix",
+          connection_id: `knot-connection-netflix-${Date.now()}`,
+          connected_at: new Date("2025-03-16").toISOString()
+        },
+        {
+          merchant: "Spotify",
+          connection_id: `knot-connection-spotify-${Date.now()}`,
+          connected_at: new Date("2025-03-17").toISOString()
+        }
+      ]
+    }
+  }
 }
 
 // Create a singleton instance

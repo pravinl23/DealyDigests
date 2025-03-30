@@ -20,12 +20,21 @@ interface Deal {
 interface DealCardProps {
   deal: Deal
   onClaim?: (dealId: string) => Promise<void>
+  isKnotConnected?: boolean
+  onKnotConnect?: (merchantName: string) => Promise<void>
 }
 
-export default function DealCard({ deal, onClaim }: DealCardProps) {
+export default function DealCard({ 
+  deal, 
+  onClaim, 
+  isKnotConnected = false,
+  onKnotConnect 
+}: DealCardProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isClaimed, setIsClaimed] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isConnectingKnot, setIsConnectingKnot] = useState(false)
+  const [localKnotConnected, setLocalKnotConnected] = useState(isKnotConnected)
 
   const validToDate = new Date(deal.validTo)
   const isExpired = validToDate < new Date()
@@ -43,6 +52,22 @@ export default function DealCard({ deal, onClaim }: DealCardProps) {
       setError(err instanceof Error ? err.message : "Failed to claim deal")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleKnotConnect = async () => {
+    if (!onKnotConnect || !deal.merchant) return
+
+    setIsConnectingKnot(true)
+    setError(null)
+
+    try {
+      await onKnotConnect(deal.merchant)
+      setLocalKnotConnected(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect with Knot")
+    } finally {
+      setIsConnectingKnot(false)
     }
   }
 
@@ -98,7 +123,7 @@ export default function DealCard({ deal, onClaim }: DealCardProps) {
 
         {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
-        <div className="mt-4">
+        <div className="mt-4 space-y-2">
           <button
             type="button"
             onClick={handleClaim}
@@ -113,6 +138,25 @@ export default function DealCard({ deal, onClaim }: DealCardProps) {
           >
             {isLoading ? "Claiming..." : isClaimed ? "Claimed" : isExpired ? "Expired" : "Claim Deal"}
           </button>
+          
+          {deal.merchant && onKnotConnect && (
+            <button
+              type="button"
+              onClick={handleKnotConnect}
+              disabled={isConnectingKnot || localKnotConnected || !deal.merchant}
+              className={`w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                localKnotConnected
+                  ? "bg-green-900 text-green-100"
+                  : "bg-blue-600 hover:bg-blue-500"
+              } focus:outline-none`}
+            >
+              {isConnectingKnot 
+                ? "Connecting..." 
+                : localKnotConnected 
+                  ? "Connected with Knot ✓" 
+                  : "Connect with Knot"}
+            </button>
+          )}
         </div>
       </div>
     </div>
