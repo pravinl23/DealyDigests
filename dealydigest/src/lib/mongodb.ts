@@ -9,6 +9,8 @@ const options: MongoClientOptions = {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
+  authSource: 'admin',
+  authMechanism: 'SCRAM-SHA-1'
 };
 
 let client: MongoClient | null = null;
@@ -22,6 +24,11 @@ export async function connectToDatabase() {
   try {
     client = new MongoClient(uri, options);
     clientPromise = client.connect();
+    
+    const testClient = await clientPromise;
+    await testClient.db('admin').command({ ping: 1 });
+    console.log('Successfully connected to MongoDB');
+    
     return clientPromise;
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
@@ -61,8 +68,8 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
   try {
     const client = await connectToDatabase();
-    const db = client.db();
-    const user = await db.collection('swipe').findOne({ email });
+    const db = client.db('swipeDB');
+    const user = await db.collection('users').findOne({ email });
     return user as User | null;
   } catch (error) {
     console.error('Error fetching user:', error);
@@ -77,8 +84,8 @@ export async function updateUserCreditCards(email: string, creditCards: CreditCa
 
   try {
     const client = await connectToDatabase();
-    const db = client.db();
-    const result = await db.collection('swipe').updateOne(
+    const db = client.db('swipeDB');
+    const result = await db.collection('users').updateOne(
       { email },
       { $set: { credit_cards: creditCards } }
     );

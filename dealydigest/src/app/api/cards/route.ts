@@ -22,10 +22,15 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(user);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching user cards:', error);
-    return NextResponse.json({ error: 'Failed to fetch user cards' }, { status: 500 });
-  }
+
+    return NextResponse.json({ 
+        error: 'Failed to fetch user cards', 
+        details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 });
+}
+
 }
 
 export async function POST(request: Request) {
