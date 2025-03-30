@@ -31,15 +31,24 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { publicToken, institution, accounts } = exchangeSchema.parse(body)
 
-    // Exchange public token for access token
-    const exchangeResponse = await knotClient.exchangePublicToken(publicToken)
+    // Exchange public token for access token using user-specific method
+    const exchangeResponse = await knotClient.exchangePublicToken(userId, publicToken)
+    
+    if (!exchangeResponse.success) {
+      return NextResponse.json({ error: exchangeResponse.error }, { status: 400 })
+    }
+    
     const { access_token: accessToken } = exchangeResponse
 
     // Get account details if not provided
     let accountDetails = accounts
     if (!accountDetails) {
-      const accountsResponse = await knotClient.getAccounts(accessToken)
-      accountDetails = accountsResponse.accounts
+      const accountsResponse = await knotClient.getAccounts(userId)
+      if (accountsResponse.success) {
+        accountDetails = accountsResponse.accounts
+      } else {
+        return NextResponse.json({ error: accountsResponse.error }, { status: 500 })
+      }
     }
 
     // Store the connection in the database
@@ -47,12 +56,12 @@ export async function POST(req: Request) {
       userId,
       aggregatorAccessToken: accessToken,
       institutionName: institution?.name || "Demo Bank",
-      cardType: accountDetails?.[0]?.subtype || "Visa",
+      cardType: accountDetails?.[0]?.type || "Visa",
       last4: accountDetails?.[0]?.mask || "1234",
     })
 
-    // Fetch initial transactions
-    await syncTransactions(bankConnection.id, accessToken, userId)
+    // Fetch initial transactions using user-specific method
+    await syncTransactions(bankConnection.id, userId)
 
     return NextResponse.json({ success: true, connectionId: bankConnection.id })
   } catch (error) {
@@ -61,23 +70,28 @@ export async function POST(req: Request) {
   }
 }
 
-// Helper function to sync transactions
-async function syncTransactions(connectionId: string, accessToken: string, userId: string) {
+// Helper function to sync transactions - updated to use user-specific methods
+async function syncTransactions(connectionId: string, userId: string) {
   try {
-    // Get transactions for the last 90 days
-    const endDate = new Date().toISOString().split("T")[0]
-    const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-
-    const transactionsResponse = await knotClient.getTransactions(accessToken, startDate, endDate)
+    // Get transactions for the last 90 days using user ID instead of access token
+    const transactionsResponse = await knotClient.getTransactions(userId, { 
+      limit: 90, 
+      offset: 0 
+    })
+    
+    if (!transactionsResponse.success) {
+      console.error("Failed to get transactions:", transactionsResponse.error)
+      return 0
+    }
 
     // Store transactions in the database
     const transactions = transactionsResponse.transactions.map((transaction: any) => ({
       userId,
       bankConnectionId: connectionId,
       date: new Date(transaction.date),
-      description: transaction.name,
-      amount: transaction.amount,
-      category: transaction.category?.[0] || "Uncategorized",
+      description: transaction.description || transaction.merchant,
+      amount: parseFloat(transaction.amount),
+      category: transaction.category || "Uncategorized",
       rawData: transaction,
     }))
 

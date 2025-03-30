@@ -23,20 +23,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Connection not found" }, { status: 404 })
     }
 
-    // Get transactions for the last 30 days
-    const endDate = new Date().toISOString().split("T")[0]
-    const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+    // Get transactions using the user ID instead of connection access token
+    const transactionsResponse = await knotClient.getTransactions(userId, {
+      limit: 30,
+      offset: 0
+    })
 
-    const transactionsResponse = await knotClient.getTransactions(connection.aggregatorAccessToken, startDate, endDate)
+    if (!transactionsResponse.success) {
+      return NextResponse.json({ error: transactionsResponse.error }, { status: 500 })
+    }
 
     // Store transactions in the database
     const transactions = transactionsResponse.transactions.map((transaction: any) => ({
       userId,
       bankConnectionId: connectionId,
       date: new Date(transaction.date),
-      description: transaction.name,
-      amount: transaction.amount,
-      category: transaction.category?.[0] || "Uncategorized",
+      description: transaction.description || transaction.merchant,
+      amount: parseFloat(transaction.amount),
+      category: transaction.category || "Uncategorized",
       rawData: transaction,
     }))
 

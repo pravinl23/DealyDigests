@@ -2,11 +2,40 @@
 
 import Link from "next/link";
 import { useUser } from "@auth0/nextjs-auth0/client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 export default function Home() {
   const { user, error, isLoading } = useUser();
+  const router = useRouter();
 
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (user && !isLoading) {
+      router.push("/dashboard");
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-blue-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // If user is logged in, don't render the login page (they'll be redirected by the useEffect)
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-blue-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+        <p className="ml-3">Redirecting to dashboard...</p>
+      </div>
+    );
+  }
+
+  // Login screen for non-logged in users
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
       <div className="container mx-auto px-4 py-12">
@@ -20,150 +49,73 @@ export default function Home() {
           </p>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+        <div className="mx-auto max-w-4xl rounded-xl bg-white p-8 shadow-lg">
+          <div className="mb-8 text-center">
+            <h2 className="mb-4 text-2xl font-semibold text-gray-900">
+              Your Connected Future Starts Here
+            </h2>
+            <p className="text-gray-600">
+              Sign up to connect your accounts and discover personalized recommendations
+            </p>
           </div>
-        ) : user ? (
-          <div className="rounded-xl bg-white p-8 shadow-lg">
-            <div className="mb-8 text-center">
-              <h2 className="mb-2 text-2xl font-semibold text-gray-900">
-                Welcome back, {user.name || user.email}!
-              </h2>
-              <p className="text-gray-600">
-                Connect your accounts to unlock personalized recommendations.
-              </p>
-            </div>
 
-            {/* Connect Accounts Section */}
-            <div className="mb-10 flex flex-col items-center">
-              <div className="mb-6 rounded-xl bg-blue-50 p-6 text-center">
-                <div className="mb-4 flex justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                </div>
-                <h3 className="mb-2 text-xl font-medium text-gray-900">No Connected Accounts</h3>
-                <p className="mb-4 text-gray-600">
-                  Connect your accounts to see personalized recommendations based on your usage patterns.
-                </p>
-              </div>
-            </div>
-
-            {/* Service Logos */}
-            <div className="mb-8">
-              <h3 className="mb-4 text-center text-lg font-medium text-gray-900">
-                Connect Services like:
-              </h3>
-              <div className="flex flex-wrap justify-center gap-6">
-                <ServiceLogo name="DoorDash" />
-                <ServiceLogo name="Spotify" />
-                <ServiceLogo name="Netflix" />
-                <ServiceLogo name="Uber" />
-                <ServiceLogo name="Amazon" />
-              </div>
-            </div>
-
-            {/* Features Grid */}
-            <div className="mb-10 grid gap-6 md:grid-cols-3">
-              <FeatureCard 
-                title="Connect Accounts" 
-                description="Link services you use to unlock personalized content"
-                icon="link"
-                link="/dashboard"
+          {/* How It Works Steps */}
+          <div className="mb-10">
+            <h3 className="mb-6 text-center text-xl font-medium text-gray-900">How It Works</h3>
+            <div className="grid gap-8 md:grid-cols-3">
+              <StepItem 
+                number="1"
+                title="Create an Account" 
+                description="Sign up with your email and password to get started"
               />
-              <FeatureCard 
+              <StepItem 
+                number="2"
+                title="Connect Services" 
+                description="Securely link services like DoorDash, Spotify, Netflix, and more"
+              />
+              <StepItem 
+                number="3"
                 title="Get Recommendations" 
-                description="Discover deals and content tailored to your activity"
-                icon="dashboard"
-                link="/dashboard"
+                description="Receive personalized suggestions based on your activity"
               />
-              <FeatureCard 
-                title="Manage Connections" 
-                description="Control which services are connected to your account"
-                icon="card"
-                link="/dashboard"
-              />
-            </div>
-
-            <div className="flex justify-center">
-              <Link
-                href="/dashboard"
-                className="rounded-lg bg-primary px-8 py-3 text-lg font-medium text-white shadow-md transition-all hover:bg-primary-dark hover:shadow-lg"
-              >
-                Go to Dashboard
-              </Link>
             </div>
           </div>
-        ) : (
-          <div className="mx-auto max-w-4xl rounded-xl bg-white p-8 shadow-lg">
-            <div className="mb-8 text-center">
-              <h2 className="mb-4 text-2xl font-semibold text-gray-900">
-                Your Connected Future Starts Here
-              </h2>
-              <p className="text-gray-600">
-                Sign up to connect your accounts and discover personalized recommendations
-              </p>
-            </div>
 
-            {/* How It Works Steps */}
-            <div className="mb-10">
-              <h3 className="mb-6 text-center text-xl font-medium text-gray-900">How It Works</h3>
-              <div className="grid gap-8 md:grid-cols-3">
-                <StepItem 
-                  number="1"
-                  title="Create an Account" 
-                  description="Sign up with your email and password to get started"
-                />
-                <StepItem 
-                  number="2"
-                  title="Connect Services" 
-                  description="Securely link services like DoorDash, Spotify, Netflix, and more"
-                />
-                <StepItem 
-                  number="3"
-                  title="Get Recommendations" 
-                  description="Receive personalized suggestions based on your activity"
-                />
-              </div>
-            </div>
-
-            {/* Benefits */}
-            <div className="mb-10 grid gap-6 md:grid-cols-2">
-              <BenefitItem 
-                title="Personalized Recommendations" 
-                description="Get tailored suggestions based on your activity patterns"
-              />
-              <BenefitItem 
-                title="Discover New Content" 
-                description="Find music, shows, restaurants and more aligned with your tastes"
-              />
-              <BenefitItem 
-                title="Private & Secure" 
-                description="Your data is kept secure and private with industry-standard protection"
-              />
-              <BenefitItem 
-                title="One Dashboard" 
-                description="Manage all your connected services in one convenient place"
-              />
-            </div>
-
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <a
-                href="/api/auth/login?screen_hint=signup"
-                className="w-full rounded-lg bg-primary px-6 py-3 text-center font-medium text-white shadow-md transition-all hover:bg-primary-dark hover:shadow-lg sm:w-auto"
-              >
-                Create Account
-              </a>
-              <a
-                href="/api/auth/login"
-                className="w-full rounded-lg border border-primary bg-white px-6 py-3 text-center font-medium text-primary transition-all hover:bg-gray-50 sm:w-auto"
-              >
-                Sign In
-              </a>
-            </div>
+          {/* Benefits */}
+          <div className="mb-10 grid gap-6 md:grid-cols-2">
+            <BenefitItem 
+              title="Personalized Recommendations" 
+              description="Get tailored suggestions based on your activity patterns"
+            />
+            <BenefitItem 
+              title="Discover New Content" 
+              description="Find music, shows, restaurants and more aligned with your tastes"
+            />
+            <BenefitItem 
+              title="Private & Secure" 
+              description="Your data is kept secure and private with industry-standard protection"
+            />
+            <BenefitItem 
+              title="One Dashboard" 
+              description="Manage all your connected services in one convenient place"
+            />
           </div>
-        )}
+
+          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <a
+              href="/api/auth/login?screen_hint=signup"
+              className="w-full rounded-lg bg-primary px-6 py-3 text-center font-medium text-white shadow-md transition-all hover:bg-primary-dark hover:shadow-lg sm:w-auto"
+            >
+              Create Account
+            </a>
+            <a
+              href="/api/auth/login"
+              className="w-full rounded-lg border border-primary bg-white px-6 py-3 text-center font-medium text-primary transition-all hover:bg-gray-50 sm:w-auto"
+            >
+              Sign In
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

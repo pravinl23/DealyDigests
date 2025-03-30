@@ -24,12 +24,6 @@ export function Navbar() {
               <Link href="/dashboard" className="hover:text-gray-300">
                 Dashboard
               </Link>
-              <Link href="/deals" className="hover:text-gray-300">
-                Deals
-              </Link>
-              <Link href="/account" className="hover:text-gray-300">
-                Account
-              </Link>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-500 text-white">
                   <span className="text-lg font-medium">
@@ -52,9 +46,6 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/deals" className="hover:text-gray-300">
-                Deals
-              </Link>
               <a
                 href="/api/auth/login"
                 className="rounded-lg border border-gray-700 px-3 py-1.5 text-sm hover:bg-primary-light"

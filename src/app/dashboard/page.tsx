@@ -51,6 +51,60 @@ interface ConnectedCompany {
 
 // Add interfaces for service data
 interface ServiceData {
+  spotify?: {
+    recentTracks?: Array<{
+      id: string;
+      name: string;
+      artist: string;
+      imageUrl?: string;
+      playedAt: string;
+    }>;
+    topGenres?: string[];
+  };
+  netflix?: {
+    recentWatched?: Array<{
+      id: string;
+      title: string;
+      type: string;
+      season?: string;
+      episode?: string;
+      duration?: string;
+      watchedAt: string;
+      imageUrl?: string;
+      genres: string[];
+    }>;
+  };
+  doordash?: {
+    recentOrders?: Array<{
+      id: string;
+      restaurant: string;
+      items: string[];
+      total: number;
+      date: string;
+      rating?: number;
+    }>;
+  };
+  uber?: {
+    recentRides?: Array<{
+      id: string;
+      from: string;
+      to: string;
+      date: string;
+      cost: number;
+    }>;
+  };
+  amazon?: {
+    recentOrders?: Array<{
+      id: string;
+      date: string;
+      total: number;
+      items?: Array<{
+        id: string;
+        name: string;
+        price: number;
+      }>;
+    }>;
+  };
   [key: string]: any;
 }
 
@@ -106,7 +160,7 @@ export default function DashboardPage() {
   const [dealsCategory, setDealsCategory] = useState<string>("all");
   const [isDealsLoading, setIsDealsLoading] = useState(false);
   const [connectedCompanies, setConnectedCompanies] = useState<ConnectedCompany[]>([]);
-  const [serviceData, setServiceData] = useState<ConnectedServicesData>({});
+  const [serviceData, setServiceData] = useState<ServiceData>({});
   const [isServiceDataLoading, setIsServiceDataLoading] = useState(false);
 
   useEffect(() => {
@@ -477,7 +531,7 @@ export default function DashboardPage() {
                     <div className="space-y-4">
                       <h3 className="text-sm font-medium text-gray-500">Recently Played</h3>
                       <ul className="space-y-3">
-                        {serviceData.spotify.recentTracks.slice(0, 3).map((track: any) => (
+                        {serviceData.spotify.recentTracks?.slice(0, 3)?.map((track: any) => (
                           <li key={track.id} className="flex items-center">
                             <div className="h-10 w-10 flex-shrink-0 rounded bg-gray-100">
                               {track.imageUrl && (
@@ -496,12 +550,15 @@ export default function DashboardPage() {
                             </div>
                           </li>
                         ))}
+                        {!serviceData.spotify.recentTracks?.length && (
+                          <li className="text-sm text-gray-500">No recent tracks found</li>
+                        )}
                       </ul>
                       
                       <div>
                         <h3 className="mb-2 text-sm font-medium text-gray-500">Top Genres</h3>
                         <div className="flex flex-wrap gap-2">
-                          {serviceData.spotify.topGenres.slice(0, 3).map((genre: string) => (
+                          {serviceData.spotify.topGenres?.slice(0, 3)?.map((genre: string) => (
                             <span 
                               key={genre} 
                               className="rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700"
@@ -509,6 +566,9 @@ export default function DashboardPage() {
                               {genre}
                             </span>
                           ))}
+                          {!serviceData.spotify.topGenres?.length && (
+                            <span className="text-sm text-gray-500">No genres found</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -526,7 +586,7 @@ export default function DashboardPage() {
                     <div className="space-y-4">
                       <h3 className="text-sm font-medium text-gray-500">Recently Watched</h3>
                       <ul className="space-y-3">
-                        {serviceData.netflix.recentWatched.slice(0, 2).map((item: any) => (
+                        {serviceData.netflix.recentWatched?.slice(0, 2)?.map((item: any) => (
                           <li key={item.id} className="flex items-start">
                             <div className="h-14 w-10 flex-shrink-0 rounded bg-gray-100">
                               {item.imageUrl && (
@@ -547,7 +607,7 @@ export default function DashboardPage() {
                                   : `${item.duration} mins`}
                               </p>
                               <div className="mt-1 flex flex-wrap gap-1">
-                                {item.genres.slice(0, 2).map((genre: string) => (
+                                {item.genres?.slice(0, 2)?.map((genre: string) => (
                                   <span 
                                     key={genre} 
                                     className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700"
@@ -559,6 +619,9 @@ export default function DashboardPage() {
                             </div>
                           </li>
                         ))}
+                        {!serviceData.netflix.recentWatched?.length && (
+                          <li className="text-sm text-gray-500">No recent watches found</li>
+                        )}
                       </ul>
                     </div>
                   </div>
@@ -575,27 +638,30 @@ export default function DashboardPage() {
                     <div className="space-y-4">
                       <h3 className="text-sm font-medium text-gray-500">Recent Orders</h3>
                       <ul className="space-y-3">
-                        {serviceData.doordash.recentOrders.slice(0, 2).map((order: any) => (
+                        {serviceData.doordash.recentOrders?.slice(0, 2)?.map((order: any) => (
                           <li key={order.id} className="rounded-lg border border-gray-100 p-3">
                             <div className="flex items-center justify-between">
                               <p className="font-medium">{order.restaurant}</p>
                               <p className="text-sm font-medium">${order.total.toFixed(2)}</p>
                             </div>
                             <p className="mt-1 text-xs text-gray-500">
-                              {order.items.join(", ")}
+                              {order.items?.join(", ")}
                             </p>
                             <div className="mt-2 flex items-center justify-between">
                               <p className="text-xs text-gray-500">
                                 {new Date(order.date).toLocaleDateString()}
                               </p>
                               <div className="flex items-center">
-                                {[...Array(order.rating)].map((_, i) => (
+                                {[...Array(order.rating || 0)].map((_, i) => (
                                   <span key={i} className="text-xs text-yellow-400">★</span>
                                 ))}
                               </div>
                             </div>
                           </li>
                         ))}
+                        {!serviceData.doordash.recentOrders?.length && (
+                          <li className="text-sm text-gray-500">No recent orders found</li>
+                        )}
                       </ul>
                     </div>
                   </div>
@@ -658,9 +724,17 @@ export default function DashboardPage() {
                       <ActivityItem 
                         icon={<ShoppingCartIcon className="h-4 w-4 text-orange-500" />}
                         title="Ordered from Amazon"
-                        description={`${serviceData.amazon.recentOrders[0].items.map((i: any) => i.name).join(", ")}`}
+                        description={`${serviceData.amazon.recentOrders[0].items?.map((i: any) => i.name).join(", ") || "Order placed"}`}
                         time={serviceData.amazon.recentOrders[0].date}
                       />
+                    )}
+                    
+                    {!serviceData.spotify?.recentTracks?.[0] && 
+                     !serviceData.netflix?.recentWatched?.[0] && 
+                     !serviceData.doordash?.recentOrders?.[0] && 
+                     !serviceData.uber?.recentRides?.[0] && 
+                     !serviceData.amazon?.recentOrders?.[0] && (
+                      <li className="ml-8 text-gray-500">No recent activity found</li>
                     )}
                   </ul>
                 </div>
