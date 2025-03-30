@@ -4,10 +4,43 @@ import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ChevronDown, Music, Video, ShoppingBag, X, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  Music,
+  Video,
+  ShoppingBag,
+  X,
+  Plus,
+  Brain,
+  BarChart2,
+  PieChart,
+  TrendingUp,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Award,
+} from "lucide-react";
 import KnotScript from "@/components/knot-script";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { motion } from "framer-motion";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Area,
+  AreaChart,
+} from "recharts";
 
 // Types for Knot SDK
 type Product = "card_switcher" | "transaction_link";
@@ -33,6 +66,23 @@ type Deal = {
   details: string;
   category: string;
 };
+
+// AI Insights types
+interface AIInsights {
+  spendingByCategory: Record<string, number>;
+  spendingByMerchant: Record<string, number>;
+  spendingByCard: Record<string, number>;
+  timeUsageByService: Record<string, number>;
+  timeUsageByContentType: Record<string, number>;
+  totalSpending: number;
+  totalHoursUsed: number;
+  aiInsights: string;
+  recommendations: string[];
+  topMerchants: Array<{ name: string; amount: number }>;
+  topCategories: Array<{ name: string; amount: number }>;
+  monthlyTrend: Array<{ date: string; amount: number }>;
+  aiScore: number;
+}
 
 export default function DashboardPage() {
   const { user, error, isLoading } = useUser();
@@ -70,6 +120,11 @@ export default function DashboardPage() {
   const [activeDealsFilter, setActiveDealsFilter] = useState("all");
   const [dealsList, setDealsList] = useState<Deal[]>([]);
   const [transactionsList, setTransactionsList] = useState<any[]>([]);
+  const [insights, setInsights] = useState<AIInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [activeInsightSection, setActiveInsightSection] =
+    useState<string>("spending");
 
   // Sample connected services
   const connectedServices = [
@@ -1008,6 +1063,572 @@ export default function DashboardPage() {
     );
   };
 
+  // Fetch AI insights
+  const fetchInsights = async () => {
+    if (activeTab !== "ai-insights") return;
+
+    try {
+      setInsightsLoading(true);
+      setInsightsError(null);
+
+      const response = await fetch("/api/analyze");
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setInsights(data);
+    } catch (error) {
+      console.error("Error fetching insights:", error);
+      setInsightsError("Failed to load insights. Please try again later.");
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  // Fetch insights when AI Insights tab is activated
+  useEffect(() => {
+    if (activeTab === "ai-insights") {
+      fetchInsights();
+    }
+  }, [activeTab]);
+
+  // Colors for charts
+  const COLORS = [
+    "#0088FE",
+    "#00C49F",
+    "#FFBB28",
+    "#FF8042",
+    "#8884d8",
+    "#82ca9d",
+  ];
+
+  // Format currency values
+  const formatCurrency = (value: number) => {
+    return `$${value.toFixed(2)}`;
+  };
+
+  // Transform category data for pie chart
+  const getCategoryData = () => {
+    if (!insights?.spendingByCategory) return [];
+
+    return Object.entries(insights.spendingByCategory).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  };
+
+  // Transform merchant data for bar chart
+  const getMerchantData = () => {
+    if (!insights?.topMerchants) return [];
+    return insights.topMerchants;
+  };
+
+  // Render AI Insights tab
+  const renderAIInsights = () => {
+    if (insightsLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="mb-4"
+          >
+            <Brain className="h-12 w-12 text-slate-900" />
+          </motion.div>
+          <p className="text-gray-500 animate-pulse">
+            Analyzing your financial data...
+          </p>
+        </div>
+      );
+    }
+
+    if (insightsError) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="bg-red-100 text-red-800 p-4 rounded-lg max-w-lg">
+            <p className="font-medium">Error loading insights</p>
+            <p className="text-sm">{insightsError}</p>
+            <button
+              onClick={fetchInsights}
+              className="mt-3 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!insights) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <p className="text-gray-500">
+            No insights available. Connect your accounts to start seeing
+            AI-powered financial insights.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-6">
+        {/* AI Score */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col items-center">
+            <h2 className="text-2xl font-semibold mb-2">
+              Financial Wellness Score
+            </h2>
+            <div className="relative">
+              <div className="w-64 h-64 relative">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, duration: 0.5, type: "spring" }}
+                    className="bg-slate-900 text-white h-48 w-48 rounded-full flex flex-col items-center justify-center shadow-lg"
+                  >
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.7, duration: 0.5 }}
+                    >
+                      <div className="text-6xl font-bold">
+                        {insights.aiScore}
+                      </div>
+                      <div className="text-sm mt-1 opacity-80">out of 100</div>
+                    </motion.div>
+                  </motion.div>
+                </div>
+                <svg className="w-full h-full" viewBox="0 0 100 100">
+                  <motion.circle
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: insights.aiScore / 100 }}
+                    transition={{ delay: 0.5, duration: 1, type: "spring" }}
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke="#4ade80"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray="251.2"
+                    strokeDashoffset="0"
+                    transform="rotate(-90 50 50)"
+                    className="drop-shadow-md"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Navigation for insight sections */}
+        <div className="border-b border-gray-200 mb-6">
+          <div className="flex space-x-6 overflow-x-auto pb-2">
+            <button
+              onClick={() => setActiveInsightSection("spending")}
+              className={`pb-2 px-1 ${
+                activeInsightSection === "spending"
+                  ? "border-b-2 border-slate-900 font-medium"
+                  : "text-gray-500"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Spending Analysis
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveInsightSection("time")}
+              className={`pb-2 px-1 ${
+                activeInsightSection === "time"
+                  ? "border-b-2 border-slate-900 font-medium"
+                  : "text-gray-500"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Time Usage
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveInsightSection("trends")}
+              className={`pb-2 px-1 ${
+                activeInsightSection === "trends"
+                  ? "border-b-2 border-slate-900 font-medium"
+                  : "text-gray-500"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Trends
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveInsightSection("recommendations")}
+              className={`pb-2 px-1 ${
+                activeInsightSection === "recommendations"
+                  ? "border-b-2 border-slate-900 font-medium"
+                  : "text-gray-500"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                Recommendations
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* AI Insights */}
+        <motion.div
+          key={activeInsightSection}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-8"
+        >
+          {activeInsightSection === "spending" && (
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Spending by Category */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <PieChart className="h-5 w-5 text-slate-900" />
+                    Spending by Category
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={getCategoryData()}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          paddingAngle={5}
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          {getCategoryData().map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value) => formatCurrency(value as number)}
+                        />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Top Merchants */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <BarChart2 className="h-5 w-5 text-slate-900" />
+                    Top Merchants
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={getMerchantData()}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" tickFormatter={formatCurrency} />
+                        <YAxis type="category" dataKey="name" width={100} />
+                        <Tooltip
+                          formatter={(value) => formatCurrency(value as number)}
+                        />
+                        <Bar
+                          dataKey="amount"
+                          fill="#4f46e5"
+                          radius={[0, 4, 4, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex items-center">
+                  <div className="mr-4 bg-blue-100 p-3 rounded-full">
+                    <DollarSign className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm text-gray-500">Total Spending</h4>
+                    <div className="text-xl font-semibold">
+                      ${insights.totalSpending.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex items-center">
+                  <div className="mr-4 bg-green-100 p-3 rounded-full">
+                    <CreditCard className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm text-gray-500">Cards Used</h4>
+                    <div className="text-xl font-semibold">
+                      {Object.keys(insights.spendingByCard).length}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex items-center">
+                  <div className="mr-4 bg-purple-100 p-3 rounded-full">
+                    <ShoppingBag className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm text-gray-500">Categories</h4>
+                    <div className="text-xl font-semibold">
+                      {Object.keys(insights.spendingByCategory).length}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeInsightSection === "time" && (
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Time Usage by Service */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-slate-900" />
+                    Time Usage by Service
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={Object.entries(insights.timeUsageByService).map(
+                            ([name, value]) => ({ name, value })
+                          )}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          fill="#8884d8"
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                          dataKey="value"
+                        >
+                          {Object.entries(insights.timeUsageByService).map(
+                            (entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            )
+                          )}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${value} hours`} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Time Usage by Content Type */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Video className="h-5 w-5 text-slate-900" />
+                    Usage by Content Type
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={Object.entries(
+                          insights.timeUsageByContentType
+                        ).map(([name, value]) => ({ name, value }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis tickFormatter={(value) => `${value}h`} />
+                        <Tooltip formatter={(value) => `${value} hours`} />
+                        <Bar
+                          dataKey="value"
+                          fill="#8884d8"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex items-center">
+                  <div className="mr-4 bg-indigo-100 p-3 rounded-full">
+                    <Clock className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm text-gray-500">Total Time Used</h4>
+                    <div className="text-xl font-semibold">
+                      {insights.totalHoursUsed.toFixed(1)} hours
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex items-center">
+                  <div className="mr-4 bg-pink-100 p-3 rounded-full">
+                    <Music className="h-6 w-6 text-pink-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm text-gray-500">
+                      Music Listening Time
+                    </h4>
+                    <div className="text-xl font-semibold">
+                      {(insights.timeUsageByContentType["music"] || 0).toFixed(
+                        1
+                      )}{" "}
+                      hours
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex items-center">
+                  <div className="mr-4 bg-red-100 p-3 rounded-full">
+                    <Video className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm text-gray-500">Streaming Time</h4>
+                    <div className="text-xl font-semibold">
+                      {(
+                        (insights.timeUsageByContentType["movies"] || 0) +
+                        (insights.timeUsageByContentType["series"] || 0)
+                      ).toFixed(1)}{" "}
+                      hours
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeInsightSection === "trends" && (
+            <div>
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm mb-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-slate-900" />
+                  Spending Trends
+                </h3>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={insights.monthlyTrend}>
+                      <defs>
+                        <linearGradient
+                          id="colorAmount"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#4f46e5"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#4f46e5"
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" />
+                      <YAxis tickFormatter={(value) => `$${value}`} />
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <Tooltip
+                        formatter={(value) => formatCurrency(value as number)}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="amount"
+                        stroke="#4f46e5"
+                        fillOpacity={1}
+                        fill="url(#colorAmount)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">
+                  AI Generated Insights
+                </h3>
+                <div className="text-gray-700 leading-relaxed">
+                  {insights.aiInsights.split("\n").map((paragraph, index) => (
+                    <p key={index} className="mb-4">
+                      {paragraph.trim()}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeInsightSection === "recommendations" && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Award className="h-5 w-5 text-slate-900" />
+                Recommended Actions
+              </h3>
+
+              <div className="space-y-4">
+                {insights.recommendations.map((recommendation, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.5 }}
+                    className="p-4 border border-gray-200 rounded-lg flex items-start gap-3"
+                  >
+                    <div className="bg-blue-100 p-2 rounded-full mt-1">
+                      <Award className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-gray-800">{recommendation}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="mt-6 text-center">
+                <button className="bg-slate-900 text-white px-6 py-3 rounded-lg text-sm font-medium">
+                  Set Up Financial Goals
+                </button>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -1233,7 +1854,7 @@ export default function DashboardPage() {
 
       {/* Navigation Tabs */}
       <div className="border-b border-gray-200 mb-8">
-        <div className="flex space-x-8">
+        <div className="flex space-x-8 overflow-x-auto">
           <button
             onClick={() => setActiveTab("insights")}
             className={`pb-4 px-2 ${
@@ -1279,6 +1900,20 @@ export default function DashboardPage() {
                 <line x1="12" y1="22.08" x2="12" y2="12"></line>
               </svg>
               Deals
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("ai-insights")}
+            className={`pb-4 px-2 ${
+              activeTab === "ai-insights"
+                ? "border-b-2 border-slate-900 font-medium"
+                : "text-gray-500"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Brain className="h-5 w-5" />
+              AI Insights
             </span>
           </button>
 
@@ -1538,6 +2173,7 @@ export default function DashboardPage() {
       )}
 
       {activeTab === "deals" && renderDeals()}
+      {activeTab === "ai-insights" && renderAIInsights()}
       {activeTab === "entertainment" && (
         <div className="py-8 text-center">
           <h2 className="text-xl font-semibold mb-4">

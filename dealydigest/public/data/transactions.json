@@ -1,0 +1,242 @@
+[
+  {
+    "id": "t1001",
+    "date": "2025-03-01",
+    "amount": 89.99,
+    "merchant": "Amazon",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1002",
+    "date": "2025-03-01",
+    "amount": 12.5,
+    "merchant": "Starbucks",
+    "category": "Dining",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1003",
+    "date": "2025-03-02",
+    "amount": 45.75,
+    "merchant": "DoorDash",
+    "category": "Dining",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1004",
+    "date": "2025-03-03",
+    "amount": 5.99,
+    "merchant": "Spotify",
+    "category": "Entertainment",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1005",
+    "date": "2025-03-04",
+    "amount": 15.99,
+    "merchant": "Netflix",
+    "category": "Entertainment",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1006",
+    "date": "2025-03-05",
+    "amount": 350.0,
+    "merchant": "United Airlines",
+    "category": "Travel",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1007",
+    "date": "2025-03-07",
+    "amount": 120.75,
+    "merchant": "Best Buy",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1008",
+    "date": "2025-03-09",
+    "amount": 85.4,
+    "merchant": "Target",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1009",
+    "date": "2025-03-10",
+    "amount": 32.5,
+    "merchant": "Uber",
+    "category": "Travel",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1010",
+    "date": "2025-03-11",
+    "amount": 65.8,
+    "merchant": "DoorDash",
+    "category": "Dining",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1011",
+    "date": "2025-03-12",
+    "amount": 29.99,
+    "merchant": "Amazon",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1012",
+    "date": "2025-03-15",
+    "amount": 10.75,
+    "merchant": "Starbucks",
+    "category": "Dining",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1013",
+    "date": "2025-03-16",
+    "amount": 199.99,
+    "merchant": "Apple",
+    "category": "Technology",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1014",
+    "date": "2025-03-18",
+    "amount": 9.99,
+    "merchant": "Disney+",
+    "category": "Entertainment",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1015",
+    "date": "2025-03-19",
+    "amount": 22.45,
+    "merchant": "Uber",
+    "category": "Travel",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1016",
+    "date": "2025-03-21",
+    "amount": 125.0,
+    "merchant": "Airbnb",
+    "category": "Travel",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1017",
+    "date": "2025-03-22",
+    "amount": 75.2,
+    "merchant": "Whole Foods",
+    "category": "Grocery",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1018",
+    "date": "2025-03-24",
+    "amount": 11.99,
+    "merchant": "Spotify",
+    "category": "Entertainment",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1019",
+    "date": "2025-03-25",
+    "amount": 68.75,
+    "merchant": "Target",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1020",
+    "date": "2025-03-27",
+    "amount": 42.6,
+    "merchant": "DoorDash",
+    "category": "Dining",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1021",
+    "date": "2025-03-28",
+    "amount": 18.5,
+    "merchant": "Uber",
+    "category": "Travel",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1022",
+    "date": "2025-03-29",
+    "amount": 8.99,
+    "merchant": "Hulu",
+    "category": "Entertainment",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1023",
+    "date": "2025-03-30",
+    "amount": 149.99,
+    "merchant": "Best Buy",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1024",
+    "date": "2025-02-28",
+    "amount": 94.5,
+    "merchant": "Amazon",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1025",
+    "date": "2025-02-25",
+    "amount": 450.0,
+    "merchant": "Delta Airlines",
+    "category": "Travel",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1026",
+    "date": "2025-02-20",
+    "amount": 89.99,
+    "merchant": "Best Buy",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1027",
+    "date": "2025-02-15",
+    "amount": 120.0,
+    "merchant": "Airbnb",
+    "category": "Travel",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1028",
+    "date": "2025-02-12",
+    "amount": 65.75,
+    "merchant": "Target",
+    "category": "Shopping",
+    "card": "Chase Freedom Unlimited"
+  },
+  {
+    "id": "t1029",
+    "date": "2025-02-10",
+    "amount": 38.5,
+    "merchant": "DoorDash",
+    "category": "Dining",
+    "card": "Chase Sapphire Reserve"
+  },
+  {
+    "id": "t1030",
+    "date": "2025-02-05",
+    "amount": 15.99,
+    "merchant": "Netflix",
+    "category": "Entertainment",
+    "card": "Chase Freedom Unlimited"
+  }
+]

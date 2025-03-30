@@ -1,0 +1,176 @@
+[
+  {
+    "service": "Netflix",
+    "date": "2025-03-01",
+    "hours": 1.5,
+    "content_type": "movies"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-01",
+    "hours": 2.3,
+    "content_type": "music"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-02",
+    "hours": 2.0,
+    "content_type": "series"
+  },
+  {
+    "service": "DoorDash",
+    "date": "2025-03-02",
+    "hours": 0.5,
+    "content_type": "ordering"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-03",
+    "hours": 1.7,
+    "content_type": "podcasts"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-04",
+    "hours": 3.2,
+    "content_type": "music"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-05",
+    "hours": 2.5,
+    "content_type": "series"
+  },
+  {
+    "service": "Amazon",
+    "date": "2025-03-07",
+    "hours": 1.2,
+    "content_type": "shopping"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-08",
+    "hours": 3.0,
+    "content_type": "movies"
+  },
+  {
+    "service": "Target",
+    "date": "2025-03-09",
+    "hours": 0.8,
+    "content_type": "shopping"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-10",
+    "hours": 2.1,
+    "content_type": "music"
+  },
+  {
+    "service": "DoorDash",
+    "date": "2025-03-11",
+    "hours": 0.3,
+    "content_type": "ordering"
+  },
+  {
+    "service": "Amazon",
+    "date": "2025-03-12",
+    "hours": 0.9,
+    "content_type": "shopping"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-13",
+    "hours": 1.5,
+    "content_type": "series"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-14",
+    "hours": 2.7,
+    "content_type": "music"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-16",
+    "hours": 3.5,
+    "content_type": "series"
+  },
+  {
+    "service": "Disney+",
+    "date": "2025-03-18",
+    "hours": 2.0,
+    "content_type": "movies"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-19",
+    "hours": 1.8,
+    "content_type": "music"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-20",
+    "hours": 2.2,
+    "content_type": "series"
+  },
+  {
+    "service": "Airbnb",
+    "date": "2025-03-21",
+    "hours": 0.7,
+    "content_type": "booking"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-22",
+    "hours": 1.4,
+    "content_type": "podcasts"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-23",
+    "hours": 1.9,
+    "content_type": "movies"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-24",
+    "hours": 2.5,
+    "content_type": "music"
+  },
+  {
+    "service": "Target",
+    "date": "2025-03-25",
+    "hours": 0.6,
+    "content_type": "shopping"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-26",
+    "hours": 2.8,
+    "content_type": "series"
+  },
+  {
+    "service": "DoorDash",
+    "date": "2025-03-27",
+    "hours": 0.4,
+    "content_type": "ordering"
+  },
+  {
+    "service": "Spotify",
+    "date": "2025-03-28",
+    "hours": 1.6,
+    "content_type": "music"
+  },
+  {
+    "service": "Hulu",
+    "date": "2025-03-29",
+    "hours": 2.3,
+    "content_type": "series"
+  },
+  {
+    "service": "Netflix",
+    "date": "2025-03-30",
+    "hours": 2.1,
+    "content_type": "movies"
+  }
+]
