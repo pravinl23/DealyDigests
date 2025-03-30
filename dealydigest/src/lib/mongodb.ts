@@ -54,6 +54,7 @@ export interface ApplePayCard {
 
 export interface User {
   _id: string;
+  auth0_id: string; // Auth0 user ID
   email: string;
   username: string;
   created_at: string;
@@ -61,7 +62,24 @@ export interface User {
   credit_cards: CreditCard[];
 }
 
-// Only use these functions in server-side code (API routes)
+// Get user by Auth0 ID instead of email
+export async function getUserById(auth0Id: string): Promise<User | null> {
+  if (typeof window !== 'undefined') {
+    throw new Error('This function can only be used in server-side code');
+  }
+
+  try {
+    const client = await connectToDatabase();
+    const db = client.db('swipeDB');
+    const user = await db.collection('users').findOne({ auth0_id: auth0Id });
+    return user as User | null;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return null;
+  }
+}
+
+// Legacy function - kept for compatibility
 export async function getUserByEmail(email: string): Promise<User | null> {
   if (typeof window !== 'undefined') {
     throw new Error('This function can only be used in server-side code');
@@ -78,8 +96,8 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   }
 }
 
-// Create a new user with placeholder data
-export async function createPlaceholderUser(email: string): Promise<User | null> {
+// Create a new user using Auth0 ID
+export async function createNewUser(auth0Id: string, email: string): Promise<User | null> {
   if (typeof window !== 'undefined') {
     throw new Error('This function can only be used in server-side code');
   }
@@ -90,18 +108,19 @@ export async function createPlaceholderUser(email: string): Promise<User | null>
     
     // Create a basic user with empty credit cards array
     const newUser = {
+      auth0_id: auth0Id,
       email,
       username: email.split('@')[0],
       created_at: new Date().toISOString(),
       apple_pay_cards: [],
-      credit_cards: [] // Empty array instead of sample card
+      credit_cards: [] // Empty array as requested
     };
     
     // Insert the new user
     const result = await db.collection('users').insertOne(newUser);
     
     if (result.acknowledged) {
-      console.log(`Created new user account for email: ${email}`);
+      console.log(`Created new user account for Auth0 ID: ${auth0Id}`);
       return {
         _id: result.insertedId.toString(),
         ...newUser
@@ -115,20 +134,36 @@ export async function createPlaceholderUser(email: string): Promise<User | null>
   }
 }
 
-export async function findOrCreateUser(email: string): Promise<User | null> {
-  // First try to find the existing user
-  let user = await getUserByEmail(email);
+export async function findOrCreateUser(auth0Id: string, email: string): Promise<User | null> {
+  // First try to find the existing user by Auth0 ID
+  let user = await getUserById(auth0Id);
   
-  // If user doesn't exist, create a placeholder
+  // If not found, try by email as fallback (for existing records)
   if (!user) {
-    console.log(`User not found with email: ${email}, creating placeholder...`);
-    user = await createPlaceholderUser(email);
+    user = await getUserByEmail(email);
+    
+    // If found by email but not having auth0_id, update the record
+    if (user && !user.auth0_id) {
+      const client = await connectToDatabase();
+      const db = client.db('swipeDB');
+      await db.collection('users').updateOne(
+        { email },
+        { $set: { auth0_id: auth0Id } }
+      );
+      user.auth0_id = auth0Id;
+    }
+  }
+  
+  // If user still not found, create a new one
+  if (!user) {
+    console.log(`User not found with Auth0 ID: ${auth0Id}, creating new user...`);
+    user = await createNewUser(auth0Id, email);
   }
   
   return user;
 }
 
-export async function updateUserCreditCards(email: string, creditCards: CreditCard[]): Promise<boolean> {
+export async function updateUserCreditCards(auth0Id: string, creditCards: CreditCard[]): Promise<boolean> {
   if (typeof window !== 'undefined') {
     throw new Error('This function can only be used in server-side code');
   }
@@ -138,20 +173,21 @@ export async function updateUserCreditCards(email: string, creditCards: CreditCa
     const db = client.db('swipeDB');
     
     // Check if user exists first
-    const userExists = await db.collection('users').findOne({ email });
+    const userExists = await db.collection('users').findOne({ auth0_id: auth0Id });
     
     if (!userExists) {
-      // Create the user first, then we'll update in the next step
-      await createPlaceholderUser(email);
+      // We need the email to create a new user - this is a limitation of this function
+      // In practice, this shouldn't be called before findOrCreateUser
+      console.error('User not found and email not provided for creation');
+      return false;
     }
     
     const result = await db.collection('users').updateOne(
-      { email },
-      { $set: { credit_cards: creditCards } },
-      { upsert: true } // Create if doesn't exist
+      { auth0_id: auth0Id },
+      { $set: { credit_cards: creditCards } }
     );
     
-    return result.modifiedCount > 0 || result.upsertedCount > 0;
+    return result.modifiedCount > 0;
   } catch (error) {
     console.error('Error updating user credit cards:', error);
     return false;

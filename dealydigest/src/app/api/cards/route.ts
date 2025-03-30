@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getUserByEmail, updateUserCreditCards, connectToDatabase, findOrCreateUser } from '@/lib/mongodb';
+import { updateUserCreditCards, connectToDatabase, findOrCreateUser } from '@/lib/mongodb';
+import { getSession } from '@auth0/nextjs-auth0';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -9,14 +10,23 @@ export async function GET(request: Request) {
     // Ensure database connection
     await connectToDatabase();
 
-    const { searchParams } = new URL(request.url);
-    const email = searchParams.get('email');
+    // Get Auth0 session to get user ID
+    const res = NextResponse.next();
+    const session = await getSession(request as any, res);
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    if (!session || !session.user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const user = await findOrCreateUser(email);
+    const auth0Id = session.user.sub; // Auth0 stores user ID in the 'sub' claim
+    const email = session.user.email;
+
+    if (!auth0Id) {
+      return NextResponse.json({ error: 'Auth0 ID not found in session' }, { status: 400 });
+    }
+
+    console.log(`Looking up user with Auth0 ID: ${auth0Id}`);
+    const user = await findOrCreateUser(auth0Id, email);
     
     if (!user) {
       return NextResponse.json({ error: 'Failed to find or create user' }, { status: 500 });
@@ -38,14 +48,28 @@ export async function POST(request: Request) {
     // Ensure database connection
     await connectToDatabase();
 
-    const body = await request.json();
-    const { email, creditCards } = body;
+    // Get Auth0 session to get user ID
+    const res = NextResponse.next();
+    const session = await getSession(request as any, res);
 
-    if (!email || !creditCards) {
-      return NextResponse.json({ error: 'Email and credit cards are required' }, { status: 400 });
+    if (!session || !session.user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const success = await updateUserCreditCards(email, creditCards);
+    const auth0Id = session.user.sub;
+    
+    if (!auth0Id) {
+      return NextResponse.json({ error: 'Auth0 ID not found in session' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { creditCards } = body;
+
+    if (!creditCards) {
+      return NextResponse.json({ error: 'Credit cards data is required' }, { status: 400 });
+    }
+
+    const success = await updateUserCreditCards(auth0Id, creditCards);
     
     if (!success) {
       return NextResponse.json({ error: 'Failed to update cards' }, { status: 500 });

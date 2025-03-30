@@ -61,17 +61,14 @@ export function CardDisplay({ card }: CardDisplayProps) {
   )
 }
 
-export function CardsList({ userEmail }: { userEmail: string }) {
-  // Validate userEmail is a proper string
-  const isValidEmail = typeof userEmail === 'string' && userEmail.trim() !== '';
-  
-  console.log('CardsList rendered with userEmail:', userEmail, 'isValid:', isValidEmail);
+export function CardsList() {
+  console.log('CardsList rendered');
   
   const [cards, setCards] = useState<CardDisplayProps['card'][]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [directEmail, setDirectEmail] = useState<string | null>(null);
+  const [isPlaceholderAccount, setIsPlaceholderAccount] = useState(false);
   const [formData, setFormData] = useState<CardFormData>({
     cardName: "",
     cardNumber: "",
@@ -80,47 +77,13 @@ export function CardsList({ userEmail }: { userEmail: string }) {
     issuer: "Chase",
     type: "credit"
   });
+  // New state for card details and deletion confirmation
+  const [selectedCard, setSelectedCard] = useState<CardDisplayProps['card'] | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  // Placeholder account detection
-  const [isPlaceholderAccount, setIsPlaceholderAccount] = useState(false);
-
-  // If userEmail is not provided, try to get it directly from Auth0
+  // Fetch cards when component mounts
   useEffect(() => {
-    if (!isValidEmail) {
-      console.log('Attempting direct Auth0 session check...');
-      // Try to get the email directly from Auth0's session endpoint
-      fetch('/api/auth/me')
-        .then(response => response.json())
-        .then(data => {
-          console.log('Direct Auth0 session response:', data);
-          if (data && data.email) {
-            console.log('Found email from Auth0 directly:', data.email);
-            setDirectEmail(data.email);
-          } else {
-            console.log('No email found in direct Auth0 session');
-            // TEMPORARY: Use hardcoded email as last resort to show cards while debugging
-          }
-        })
-        .catch(err => {
-          console.error('Error checking Auth0 session directly:', err);
-          // TEMPORARY: Use hardcoded email as last resort if Auth0 check fails
-        });
-    }
-  }, [isValidEmail, userEmail]);
-
-  // Use the email from props or from direct Auth0 check
-  const emailToUse = isValidEmail ? userEmail : directEmail;
-  
-  useEffect(() => {
-    console.log('CardsList useEffect triggered with email to use:', emailToUse);
-    
-    if (!emailToUse) {
-      console.log('No valid email available');
-      setError('No email provided. Please ensure you are logged in properly.');
-      setIsLoading(false);
-      return;
-    }
-
     let isMounted = true;
     
     const fetchUserCards = async () => {
@@ -128,8 +91,10 @@ export function CardsList({ userEmail }: { userEmail: string }) {
         setIsLoading(true);
         setError(null);
         setIsPlaceholderAccount(false);
-        console.log('Starting to fetch cards for email:', emailToUse);
-        const response = await fetch(`/api/cards?email=${encodeURIComponent(emailToUse)}`);
+        console.log('Starting to fetch cards');
+        
+        // Now the API handles authentication through the Auth0 session
+        const response = await fetch('/api/cards');
         console.log('API Response status:', response.status);
         
         if (!isMounted) return;
@@ -189,15 +154,12 @@ export function CardsList({ userEmail }: { userEmail: string }) {
       }
     };
 
-    // Only fetch if we have a valid email
-    if (emailToUse) {
-      fetchUserCards();
-    }
+    fetchUserCards();
     
     return () => {
       isMounted = false;
     };
-  }, [emailToUse]);
+  }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -209,11 +171,6 @@ export function CardsList({ userEmail }: { userEmail: string }) {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emailForSubmit = emailToUse;
-    if (!emailForSubmit) {
-      console.error('Cannot add card without valid email');
-      return;
-    }
     
     // Extract only the last 4 digits from the card number
     const last4 = formData.cardNumber.slice(-4);
@@ -244,7 +201,6 @@ export function CardsList({ userEmail }: { userEmail: string }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: emailForSubmit,
           creditCards: [...cards.map(card => ({
             last4: card.last4,
             expiry: card.expires,
@@ -276,25 +232,56 @@ export function CardsList({ userEmail }: { userEmail: string }) {
     }
   };
   
+  // Handler for opening card details
+  const handleCardClick = (card: CardDisplayProps['card']) => {
+    setSelectedCard(card);
+    setIsDetailModalOpen(true);
+  };
+
+  // Handler for deleting a card
+  const handleDeleteCard = async () => {
+    if (!selectedCard) return;
+
+    try {
+      // Filter out the card to be deleted
+      const updatedCards = cards.filter(card => card.id !== selectedCard.id);
+      
+      // Prepare the data for MongoDB update
+      const mongoCards = updatedCards.map(card => ({
+        last4: card.last4,
+        expiry: card.expires,
+        card_type: card.issuer,
+        name: card.name
+      }));
+
+      // Update the database
+      const response = await fetch('/api/cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          creditCards: mongoCards
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete card');
+      }
+
+      // Update local state
+      setCards(updatedCards);
+      setIsDeleteConfirmOpen(false);
+      setIsDetailModalOpen(false);
+      setSelectedCard(null);
+    } catch (error) {
+      console.error('Error deleting card:', error);
+    }
+  };
+  
   // Generate year options (current year + 10 years)
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
-
-  if (!emailToUse) {
-    return (
-      <div className="space-y-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="text-center py-8">
-          <p className="text-gray-600">Waiting for user authentication...</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -349,7 +336,8 @@ export function CardsList({ userEmail }: { userEmail: string }) {
                 {cards.map((card) => (
                   <div 
                     key={card.id} 
-                    className="flex overflow-hidden rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md"
+                    className="flex overflow-hidden rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-blue-300 cursor-pointer"
+                    onClick={() => handleCardClick(card)}
                   >
                     {/* Colored bar on the left, similar to Netflix UI */}
                     <div className="w-2 bg-blue-600"></div>
@@ -419,7 +407,7 @@ export function CardsList({ userEmail }: { userEmail: string }) {
           </div>
         </div>
         
-        {/* Modal Overlay */}
+        {/* Add Card Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setIsModalOpen(false)}>
             {/* Modal Content */}
@@ -605,6 +593,118 @@ export function CardsList({ userEmail }: { userEmail: string }) {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Card Detail Modal */}
+        {isDetailModalOpen && selectedCard && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setIsDetailModalOpen(false)}>
+            <div 
+              className="bg-white rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-2xl transform transition-all"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="bg-[#0a192f] text-white p-4 flex justify-between items-center">
+                <h3 className="text-xl font-semibold">Card Details</h3>
+                <button onClick={() => setIsDetailModalOpen(false)} className="text-white hover:text-gray-200">
+                  <XIcon />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                {/* Card Display */}
+                <div className="flex justify-center">
+                  <CardDisplay card={selectedCard} />
+                </div>
+                
+                {/* Card Details */}
+                <div className="space-y-4 mt-6">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Card Name</h4>
+                    <p className="text-lg font-medium text-gray-900">{selectedCard.name}</p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Card Number</h4>
+                    <p className="text-lg font-medium text-gray-900">•••• •••• •••• {selectedCard.last4}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Card Issuer</h4>
+                      <p className="text-lg font-medium text-gray-900">{selectedCard.issuer}</p>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Card Type</h4>
+                      <p className="text-lg font-medium text-gray-900">{getCardTypeLabel(selectedCard.type)}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Expiration Date</h4>
+                    <p className="text-lg font-medium text-gray-900">{selectedCard.expires}</p>
+                  </div>
+                </div>
+                
+                <div className="pt-6 border-t">
+                  <div className="flex justify-between">
+                    <button
+                      onClick={() => setIsDetailModalOpen(false)}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => setIsDeleteConfirmOpen(true)}
+                      className="px-4 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
+                    >
+                      Remove Card
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Delete Confirmation Modal */}
+        {isDeleteConfirmOpen && selectedCard && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div 
+              className="bg-white rounded-xl w-full max-w-sm mx-4 overflow-hidden shadow-2xl transform transition-all"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-center mb-2">
+                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </div>
+                </div>
+                
+                <h3 className="text-xl font-semibold text-center">Remove Card</h3>
+                
+                <p className="text-center text-gray-600">
+                  Are you sure you want to remove <span className="font-medium">{selectedCard.name}</span> ending in <span className="font-medium">{selectedCard.last4}</span>?
+                </p>
+                
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={() => setIsDeleteConfirmOpen(false)}
+                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteCard}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                  >
+                    Yes, Remove
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
