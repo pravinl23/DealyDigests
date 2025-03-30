@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserByEmail, updateUserCreditCards, connectToDatabase } from '@/lib/mongodb';
+import { getUserByEmail, updateUserCreditCards, connectToDatabase, findOrCreateUser } from '@/lib/mongodb';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -16,9 +16,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const user = await getUserByEmail(email);
+    const user = await findOrCreateUser(email);
+    
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Failed to find or create user' }, { status: 500 });
     }
 
     return NextResponse.json(user);
@@ -29,8 +30,7 @@ export async function GET(request: Request) {
         error: 'Failed to fetch user cards', 
         details: error instanceof Error ? error.message : String(error) 
     }, { status: 500 });
-}
-
+  }
 }
 
 export async function POST(request: Request) {
