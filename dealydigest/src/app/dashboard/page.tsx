@@ -12,70 +12,26 @@ import MediaHistorySection from "@/components/MediaHistorySection";
 import RecommendationsSection from "@/components/RecommendationsSection";
 import { MusicIcon } from "lucide-react";
 
-// Sample data for the dashboard
-const spendingData = [
-  { category: "Travel", amount: 1250, color: "bg-blue-500" },
-  { category: "Dining", amount: 480, color: "bg-amber-500" },
-  { category: "Shopping", amount: 350, color: "bg-purple-500" },
-  { category: "Groceries", amount: 210, color: "bg-green-500" },
-  { category: "Entertainment", amount: 180, color: "bg-pink-500" },
-];
+// Define interfaces
+interface SpendingData {
+  category: string;
+  amount: number;
+  color: string;
+}
 
-type TransactionCategory = "Travel" | "Dining" | "Shopping" | "Other";
+interface Transaction {
+  id: string;
+  merchant: string;
+  amount: number;
+  date: string;
+  category: string;
+  description: string;
+  cardName?: string;
+  cardIssuer?: string;
+  cardLast4?: string;
+}
 
-const transactions = [
-  {
-    id: "tx1",
-    merchant: "United Airlines",
-    amount: 650.0,
-    date: "2025-03-29T10:00:00",
-    category: "Travel" as TransactionCategory,
-    cardName: "Sapphire Reserve",
-    cardIssuer: "Chase",
-    cardLast4: "4567",
-  },
-  {
-    id: "tx2",
-    merchant: "Olive Garden",
-    amount: 85.5,
-    date: "2025-03-28T19:30:00",
-    category: "Dining" as TransactionCategory,
-    cardName: "Sapphire Reserve",
-    cardIssuer: "Chase",
-    cardLast4: "4567",
-  },
-  {
-    id: "tx3",
-    merchant: "Amazon",
-    amount: 129.99,
-    date: "2025-03-27T15:45:00",
-    category: "Shopping" as TransactionCategory,
-    cardName: "Freedom Unlimited",
-    cardIssuer: "Chase",
-    cardLast4: "8901",
-  },
-  {
-    id: "tx4",
-    merchant: "Walmart",
-    amount: 76.25,
-    date: "2025-03-26T12:30:00",
-    category: "Shopping" as TransactionCategory,
-    cardName: "Freedom Unlimited",
-    cardIssuer: "Chase",
-    cardLast4: "8901",
-  },
-  {
-    id: "tx5",
-    merchant: "Shell Gas Station",
-    amount: 45.75,
-    date: "2025-03-25T08:15:00",
-    category: "Other" as TransactionCategory,
-    cardName: "Freedom Unlimited",
-    cardIssuer: "Chase",
-    cardLast4: "8901",
-  },
-];
-
+// Default cards data
 const cards = [
   {
     id: "card1",
@@ -106,12 +62,96 @@ export default function DashboardPage() {
   const { user, error, isLoading } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("insights");
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [spendingData, setSpendingData] = useState<SpendingData[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isAddingTransaction, setIsAddingTransaction] = useState(false);
+  const [formData, setFormData] = useState({
+    merchant: "",
+    amount: "",
+    category: "Dining",
+    description: "",
+  });
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/api/auth/login?returnTo=/dashboard");
     }
   }, [user, isLoading, router]);
+
+  // Fetch transactions and chart data
+  const fetchTransactions = async () => {
+    setIsDataLoading(true);
+    try {
+      const response = await fetch('/api/transactions');
+      const data = await response.json();
+      if (data.success) {
+        setTransactions(data.transactions);
+        setSpendingData(data.chartData);
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchTransactions();
+    }
+  }, [user]);
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.merchant || !formData.amount) {
+      alert("Please fill in merchant and amount");
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          merchant: formData.merchant,
+          amount: parseFloat(formData.amount),
+          category: formData.category,
+          description: formData.description,
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        // Clear form
+        setFormData({
+          merchant: "",
+          amount: "",
+          category: "Dining",
+          description: "",
+        });
+        
+        // Hide form
+        setIsAddingTransaction(false);
+        
+        // Refresh transactions
+        fetchTransactions();
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+    }
+  };
 
   if (isLoading) {
     return <div className="text-center py-10">Loading...</div>;
@@ -186,11 +226,112 @@ export default function DashboardPage() {
               {activeTab === "insights" && (
                 <>
                   <div className="card mb-8 p-6">
-                    <SpendingChart data={spendingData} />
+                    {isDataLoading ? (
+                      <div className="flex items-center justify-center h-[350px]">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                      </div>
+                    ) : (
+                      <SpendingChart data={spendingData} />
+                    )}
                   </div>
 
                   <div className="card p-6">
-                    <TransactionsList transactions={transactions} />
+                    {isDataLoading ? (
+                      <div className="flex items-center justify-center h-40">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center mb-4">
+                          <h2 className="text-xl font-medium">Recent Transactions</h2>
+                          <button 
+                            onClick={() => setIsAddingTransaction(!isAddingTransaction)}
+                            className="px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark"
+                          >
+                            {isAddingTransaction ? "Cancel" : "Add Transaction"}
+                          </button>
+                        </div>
+
+                        {isAddingTransaction && (
+                          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                            <h3 className="text-lg font-medium mb-3">Add New Transaction</h3>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Merchant
+                                </label>
+                                <input
+                                  type="text"
+                                  name="merchant"
+                                  value={formData.merchant}
+                                  onChange={handleFormChange}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                  required
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Amount ($)
+                                </label>
+                                <input
+                                  type="number"
+                                  name="amount"
+                                  value={formData.amount}
+                                  onChange={handleFormChange}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Category
+                                </label>
+                                <select
+                                  name="category"
+                                  value={formData.category}
+                                  onChange={handleFormChange}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                >
+                                  <option value="Dining">Dining</option>
+                                  <option value="Travel">Travel</option>
+                                  <option value="Shopping">Shopping</option>
+                                  <option value="Groceries">Groceries</option>
+                                  <option value="Entertainment">Entertainment</option>
+                                  <option value="Transportation">Transportation</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Description (Optional)
+                                </label>
+                                <textarea
+                                  name="description"
+                                  value={formData.description}
+                                  onChange={handleFormChange}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                  rows={2}
+                                />
+                              </div>
+                              
+                              <button
+                                type="submit"
+                                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+                              >
+                                Save Transaction
+                              </button>
+                            </form>
+                          </div>
+                        )}
+                        
+                        <TransactionsList transactions={transactions} />
+                      </>
+                    )}
                   </div>
                 </>
               )}

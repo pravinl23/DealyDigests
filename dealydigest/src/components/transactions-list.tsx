@@ -5,10 +5,11 @@ interface Transaction {
   merchant: string
   amount: number
   date: string
-  category: "Travel" | "Dining" | "Shopping" | "Other"
-  cardName: string
-  cardIssuer: string
-  cardLast4: string
+  category: string
+  cardName?: string
+  cardIssuer?: string
+  cardLast4?: string
+  description?: string
 }
 
 export function TransactionsList({ transactions }: { transactions: Transaction[] }) {
@@ -37,7 +38,8 @@ function TransactionItem({ transaction }: { transaction: Transaction }) {
         <div>
           <div className="font-medium">{transaction.merchant}</div>
           <div className="text-sm text-gray-500">
-            {transaction.cardIssuer} {transaction.cardName} • {formatRelativeTime(transaction.date)}
+            {transaction.cardIssuer ? `${transaction.cardIssuer} ${transaction.cardName} • ` : ''}
+            {formatRelativeTime(transaction.date)}
           </div>
         </div>
       </div>
@@ -49,22 +51,38 @@ function TransactionItem({ transaction }: { transaction: Transaction }) {
   )
 }
 
-function getCategoryDisplay(category: Transaction["category"]) {
-  switch (category) {
-    case "Travel":
+function getCategoryDisplay(category: string) {
+  switch (category.toLowerCase()) {
+    case "travel":
       return {
         icon: <PlaneIcon className="h-5 w-5" />,
         bgColor: "bg-blue-500",
       }
-    case "Dining":
+    case "dining":
+    case "food and dining":
       return {
         icon: <RestaurantIcon className="h-5 w-5" />,
         bgColor: "bg-amber-500",
       }
-    case "Shopping":
+    case "shopping":
       return {
         icon: <ShoppingBagIcon className="h-5 w-5" />,
         bgColor: "bg-purple-500",
+      }
+    case "groceries":
+      return {
+        icon: <ShoppingBagIcon className="h-5 w-5" />,
+        bgColor: "bg-green-500",
+      }
+    case "entertainment":
+      return {
+        icon: <EntertainmentIcon className="h-5 w-5" />,
+        bgColor: "bg-pink-500",
+      }
+    case "transportation":
+      return {
+        icon: <TransportIcon className="h-5 w-5" />,
+        bgColor: "bg-cyan-500",
       }
     default:
       return {
@@ -168,6 +186,43 @@ function CreditCardIcon(props: React.SVGProps<SVGSVGElement>) {
     >
       <rect width="20" height="14" x="2" y="5" rx="2" />
       <line x1="2" x2="22" y1="10" y2="10" />
+    </svg>
+  )
+}
+
+function EntertainmentIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="m7 2 10 5-10 5z" />
+      <path d="M7 12 17 7 7 17Z" />
+    </svg>
+  )
+}
+
+function TransportIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M5 17h14M5 17a4 4 0 0 1-4-4 4 4 0 0 1 4-4h14a4 4 0 0 1 4 4 4 4 0 0 1-4 4M5 9V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4" />
+      <circle cx="8" cy="17" r="2" />
+      <circle cx="16" cy="17" r="2" />
     </svg>
   )
 } 
