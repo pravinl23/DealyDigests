@@ -121,11 +121,129 @@ export default function DashboardPage() {
   const [activeDealsFilter, setActiveDealsFilter] = useState("all");
   const [dealsList, setDealsList] = useState<Deal[]>([]);
   const [transactionsList, setTransactionsList] = useState<any[]>([]);
-  const [insights, setInsights] = useState<AIInsights | null>(null);
+  const [insights, setInsights] = useState<AIInsights>({
+    spendingByCategory: {
+      Dining: 450.75,
+      Entertainment: 250.3,
+      Shopping: 850.2,
+      Travel: 1200.5,
+    },
+    spendingByMerchant: {
+      Amazon: 450.25,
+      Netflix: 15.99,
+      Uber: 125.5,
+      Starbucks: 85.4,
+    },
+    spendingByCard: {
+      "Chase Sapphire Reserve": 1500.75,
+      "Freedom Unlimited": 850.25,
+    },
+    timeUsageByService: {
+      Netflix: 25.5,
+      Spotify: 15.2,
+      YouTube: 8.5,
+    },
+    timeUsageByContentType: {
+      movies: 18.5,
+      music: 15.2,
+      series: 12.8,
+    },
+    totalSpending: 2950.45,
+    totalHoursUsed: 49.2,
+    aiInsights:
+      "Based on your recent activity, you've shown a balanced approach to entertainment spending. Your streaming services usage aligns well with the subscription costs.",
+    recommendations: [
+      "Consider consolidating streaming subscriptions to maximize value",
+      "Look into Chase Sapphire Reserve's entertainment rewards program",
+      "Set up alerts for unusual entertainment spending patterns",
+    ],
+    topMerchants: [
+      { name: "Amazon", amount: 450.25 },
+      { name: "Netflix", amount: 15.99 },
+      { name: "Uber", amount: 125.5 },
+    ],
+    topCategories: [
+      { name: "Travel", amount: 1200.5 },
+      { name: "Shopping", amount: 850.2 },
+      { name: "Dining", amount: 450.75 },
+    ],
+    monthlyTrend: [
+      { date: "2025-02-05", amount: 150 },
+      { date: "2025-02-15", amount: 280 },
+      { date: "2025-02-28", amount: 420 },
+      { date: "2025-03-10", amount: 350 },
+      { date: "2025-03-20", amount: 480 },
+      { date: "2025-03-30", amount: 520 },
+    ],
+    aiScore: 94,
+  });
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [activeInsightSection, setActiveInsightSection] =
     useState<string>("spending");
+
+  // Entertainment tab state
+  const [entertainmentFilter, setEntertainmentFilter] = useState("all");
+  const [showMusicRecommendations, setShowMusicRecommendations] =
+    useState(true);
+  const [showEventsSection, setShowEventsSection] = useState(true);
+  const [showMoviesSection, setShowMoviesSection] = useState(true);
+  // Animation states
+  const [isLoaded, setIsLoaded] = useState(false);
+  // Content data
+  const [musicHistory, setMusicHistory] = useState([
+    {
+      id: 1,
+      title: "Blinding Lights",
+      artist: "The Weeknd",
+      album: "After Hours",
+      date: "2025-03-30",
+      playCount: 201000,
+    },
+    {
+      id: 2,
+      title: "Levitating",
+      artist: "Dua Lipa",
+      album: "Future Nostalgia",
+      date: "2025-03-30",
+      playCount: 203000,
+    },
+    {
+      id: 3,
+      title: "Save Your Tears",
+      artist: "The Weeknd",
+      album: "After Hours",
+      date: "2025-03-29",
+      playCount: 215000,
+    },
+  ]);
+  const [videoHistory, setVideoHistory] = useState([
+    {
+      id: 1,
+      title: "Stranger Things",
+      season: "S4",
+      episode: "E9",
+      duration: "78 mins",
+      date: "2025-03-29",
+      genres: ["Sci-Fi", "Horror", "Drama"],
+    },
+    {
+      id: 2,
+      title: "Wednesday",
+      season: "S1",
+      episode: "E8",
+      duration: "48 mins",
+      date: "2025-03-27",
+      genres: ["Comedy", "Fantasy", "Mystery"],
+    },
+    {
+      id: 3,
+      title: "Glass Onion: A Knives Out Mystery",
+      duration: "139 mins",
+      date: "2025-03-23",
+      genres: [],
+    },
+  ]);
 
   // Sample connected services
   const connectedServices = [
@@ -371,26 +489,79 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Fetch initial data for the dashboard
+  const fetchInitialData = () => {
+    // Set some initial user cards if they don't exist
+    if (userCards.length === 0) {
+      setUserCards([
+        {
+          id: 1,
+          name: "Chase Sapphire Reserve",
+          lastFour: "4567",
+          isPrimary: true,
+        },
+        {
+          id: 2,
+          name: "Chase Freedom Unlimited",
+          lastFour: "8901",
+          isPrimary: false,
+        },
+        {
+          id: 3,
+          name: "American Express Gold",
+          lastFour: "2345",
+          isPrimary: false,
+        },
+      ]);
+      setCardsLoading(false);
+    }
+
+    // Generate some deals if they don't exist
+    if (dealsList.length === 0) {
+      const generatedDeals = Array(5)
+        .fill(null)
+        .map((_, i) => generateRandomDeal());
+      setDealsList(generatedDeals);
+    }
+  };
+
+  // Fetch dummy transactions for the dashboard
+  const fetchDummyTransactions = () => {
+    if (transactionsList.length === 0) {
+      setTransactionsList(initialTransactions);
+    }
+  };
+
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/api/auth/login?returnTo=/dashboard");
+    if (!user && !isLoading) {
+      router.push("/");
     }
 
-    // Close dropdown when clicking outside
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setDropdownOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    // Initial data loading
+    fetchInitialData();
+    fetchDummyTransactions();
+    fetchInsights();
   }, [user, isLoading, router]);
+
+  // Add animation load effect for entertainment tab
+  useEffect(() => {
+    if (activeTab === "entertainment") {
+      // Set isLoaded to false first to trigger animations
+      setIsLoaded(false);
+
+      // Small delay to ensure animations trigger properly
+      const timer = setTimeout(() => {
+        setIsLoaded(true);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
+
+  // Handle click outside of dropdown
+  useEffect(() => {
+    // Existing function
+  }, []);
 
   // Fetch user's credit cards
   useEffect(() => {
@@ -405,7 +576,7 @@ export default function DashboardPage() {
       setKnotError("You must be logged in to connect with Knot");
       return null;
     }
-    
+
     try {
       setLoading(true);
       setKnotError(null);
@@ -424,7 +595,7 @@ export default function DashboardPage() {
           product: selectedProduct,
         }),
       });
-      
+
       const text = await response.text();
       let data;
 
@@ -1129,7 +1300,7 @@ export default function DashboardPage() {
   // Render AI Insights tab
   const renderAIInsights = () => {
     if (insightsLoading) {
-  return (
+      return (
         <div className="flex flex-col items-center justify-center py-12">
           <motion.div
             animate={{ rotate: 360 }}
@@ -1157,7 +1328,7 @@ export default function DashboardPage() {
             >
               Try Again
             </button>
-              </div>
+          </div>
         </div>
       );
     }
@@ -1169,7 +1340,7 @@ export default function DashboardPage() {
             No insights available. Connect your accounts to start seeing
             AI-powered financial insights.
           </p>
-              </div>
+        </div>
       );
     }
 
@@ -1202,11 +1373,11 @@ export default function DashboardPage() {
                     >
                       <div className="text-6xl font-bold">
                         {insights.aiScore}
-              </div>
+                      </div>
                       <div className="text-sm mt-1 opacity-80">out of 100</div>
                     </motion.div>
                   </motion.div>
-            </div>
+                </div>
                 <svg className="w-full h-full" viewBox="0 0 100 100">
                   <motion.circle
                     initial={{ pathLength: 0 }}
@@ -1225,7 +1396,7 @@ export default function DashboardPage() {
                     className="drop-shadow-md"
                   />
                 </svg>
-          </div>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -1337,7 +1508,7 @@ export default function DashboardPage() {
                       </RechartsPieChart>
                     </ResponsiveContainer>
                   </div>
-              </div>
+                </div>
 
                 {/* Top Merchants */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -1365,7 +1536,7 @@ export default function DashboardPage() {
                         />
                       </BarChart>
                     </ResponsiveContainer>
-                      </div>
+                  </div>
                 </div>
               </div>
 
@@ -1449,7 +1620,7 @@ export default function DashboardPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  </div>
+                </div>
 
                 {/* Time Usage by Content Type */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -1475,7 +1646,7 @@ export default function DashboardPage() {
                         />
                       </BarChart>
                     </ResponsiveContainer>
-                      </div>
+                  </div>
                 </div>
               </div>
 
@@ -1579,14 +1750,60 @@ export default function DashboardPage() {
 
               <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
                 <h3 className="text-lg font-semibold mb-4">
-                  AI Generated Insights
+                  AI Chat Assistant
                 </h3>
-                <div className="text-gray-700 leading-relaxed">
-                  {insights.aiInsights.split("\n").map((paragraph, index) => (
-                    <p key={index} className="mb-4">
-                      {paragraph.trim()}
-                    </p>
-                  ))}
+                <div className="h-96 flex flex-col">
+                  <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+                    {chatMessages.length === 0 ? (
+                      <div className="text-gray-500 text-center py-4">
+                        Ask me anything about your financial data and insights!
+                      </div>
+                    ) : (
+                      chatMessages.map((msg, index) => (
+                        <div
+                          key={index}
+                          className={`flex ${
+                            msg.role === "user"
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-lg p-3 ${
+                              msg.role === "user"
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    {isChatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-100 text-gray-800 rounded-lg p-3 animate-pulse">
+                          Thinking...
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <form onSubmit={handleChatSubmit} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Ask about your financial insights..."
+                      className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isChatLoading || !chatInput.trim()}
+                      className="bg-slate-900 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+                    >
+                      Send
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>
@@ -1630,6 +1847,333 @@ export default function DashboardPage() {
     );
   };
 
+  // Entertainment tab functions
+  const handleEntertainmentFilter = (filter: string) => {
+    setEntertainmentFilter(filter);
+
+    // Update visibility based on filter
+    if (filter === "all") {
+      setShowMusicRecommendations(true);
+      setShowEventsSection(true);
+      setShowMoviesSection(true);
+    } else if (filter === "concerts") {
+      setShowMusicRecommendations(true);
+      setShowEventsSection(true);
+      setShowMoviesSection(false);
+    } else if (filter === "musicals") {
+      setShowMusicRecommendations(false);
+      setShowEventsSection(true);
+      setShowMoviesSection(false);
+    } else if (filter === "shows") {
+      setShowMusicRecommendations(false);
+      setShowEventsSection(false);
+      setShowMoviesSection(true);
+    } else if (filter === "movies") {
+      setShowMusicRecommendations(false);
+      setShowEventsSection(false);
+      setShowMoviesSection(true);
+    }
+  };
+
+  const getFilteredLiveEvents = () => {
+    const allEvents = [
+      {
+        id: 1,
+        title: "Queen + Adam Lambert - The Rhapsody Tour",
+        date: "Mon, Apr 14, 25",
+        venue: "Madison Square Garden, New York",
+        tags: ["Rock", "Classic Rock"],
+        type: "concert",
+        price: 120.0,
+      },
+      {
+        id: 2,
+        title: "Hamilton - Broadway Musical",
+        date: "Sat, Apr 19, 25",
+        venue: "Richard Rodgers Theatre, New York",
+        tags: ["Musical", "Broadway", "Historical"],
+        type: "musical",
+        price: 250.0,
+      },
+      {
+        id: 3,
+        title: "My Chemical Romance Reunion Tour",
+        date: "Wed, Apr 9, 25",
+        venue: "Barclays Center, Brooklyn",
+        tags: ["Rock", "Alternative", "Emo"],
+        type: "concert",
+        price: 95.0,
+      },
+      {
+        id: 4,
+        title: "La La Land in Concert",
+        date: "Thu, Apr 24, 25",
+        venue: "Lincoln Center, New York",
+        tags: ["Soundtrack", "Jazz", "Musical"],
+        type: "musical",
+        price: 85.0,
+      },
+      {
+        id: 5,
+        title: "Stranger Things: The Experience",
+        date: "Mon, Mar 31, 25",
+        venue: "Brooklyn Navy Yard, New York",
+        tags: ["Sci-Fi", "Immersive", "Interactive"],
+        type: "show",
+        price: 65.0,
+      },
+    ];
+
+    if (entertainmentFilter === "all") {
+      return allEvents;
+    } else if (entertainmentFilter === "concerts") {
+      return allEvents.filter((event) => event.type === "concert");
+    } else if (entertainmentFilter === "musicals") {
+      return allEvents.filter((event) => event.type === "musical");
+    } else if (entertainmentFilter === "shows") {
+      return allEvents.filter((event) => event.type === "show");
+    } else {
+      return allEvents;
+    }
+  };
+
+  const getRecommendedShows = () => {
+    const allShows = [
+      {
+        id: 1,
+        title: "The Queen's Gambit",
+        platform: "Netflix",
+        rating: "4.7/5",
+        year: "2020",
+        seasons: "1 season",
+        tags: ["Drama", "Historical"],
+        cast: "Anya Taylor-Joy, Thomas Brodie-Sangster",
+        promo: "Free month with Chase Sapphire Reserve",
+      },
+      {
+        id: 2,
+        title: "Loki",
+        platform: "Disney+",
+        rating: "4.5/5",
+        year: "2021",
+        seasons: "1 season",
+        tags: ["Action", "Sci-Fi", "Adventure"],
+        cast: "Tom Hiddleston, Owen Wilson",
+        promo: "3 months free with Chase card",
+      },
+      {
+        id: 3,
+        title: "The Mandalorian",
+        platform: "Disney+",
+        rating: "4.8/5",
+        year: "2019",
+        seasons: "2 seasons",
+        tags: ["Sci-Fi", "Action", "Space Western"],
+        cast: "Pedro Pascal, Grogu",
+        promo: "6 months free Disney+ with Freedom card",
+      },
+      {
+        id: 4,
+        title: "Dune",
+        platform: "HBO Max",
+        rating: "4.6/5",
+        year: "2021",
+        duration: "155 mins",
+        tags: ["Sci-Fi", "Adventure", "Drama"],
+        cast: "Timothée Chalamet, Zendaya",
+        promo: "Free rental with HBO subscription",
+      },
+      {
+        id: 5,
+        title: "No Time to Die",
+        platform: "Amazon Prime",
+        rating: "4.3/5",
+        year: "2021",
+        duration: "163 mins",
+        tags: ["Action", "Adventure", "Thriller"],
+        cast: "Daniel Craig, Ana de Armas",
+        promo: "40% off rental with Prime",
+      },
+    ];
+
+    // Filter shows based on selection - shows or movies
+    if (entertainmentFilter === "shows") {
+      return allShows.filter((show) => show.seasons);
+    } else if (entertainmentFilter === "movies") {
+      return allShows.filter((show) => show.duration);
+    } else {
+      return allShows;
+    }
+  };
+
+  const getMusicRecommendations = () => {
+    return [
+      {
+        id: 1,
+        title: "Plastic Hearts",
+        artist: "Miley Cyrus",
+        tags: ["Rock", "Pop", "Glam Rock"],
+        year: "2020",
+        tracks: "15",
+        price: 9.99,
+        promo: "Free download with Apple Card purchase",
+      },
+      {
+        id: 2,
+        title: "Justice",
+        artist: "Justin Bieber",
+        tags: ["Pop", "R&B"],
+        year: "2021",
+        tracks: "16",
+        price: 10.99,
+        promo: "Buy 1 Get 1 Free with Chase Freedom card",
+      },
+      {
+        id: 3,
+        title: "Future Nostalgia",
+        artist: "Dua Lipa",
+        tags: ["Pop", "Dance", "Disco"],
+        year: "2020",
+        tracks: "11",
+        price: 8.99,
+        promo: "15% cashback with Amazon Prime Visa",
+      },
+    ];
+  };
+
+  // Define type for merchant history items
+  type MerchantHistoryItem = {
+    id: number;
+    title: string;
+    subtitle: string;
+    date: string;
+    amount?: number;
+    type?: string;
+    category?: string;
+  };
+
+  // Add new state for merchant history with proper type
+  const [merchantHistory, setMerchantHistory] = useState<MerchantHistoryItem[]>(
+    []
+  );
+
+  // Update the useEffect to handle merchant selection changes
+  useEffect(() => {
+    if (selectedMerchant && selectedMerchant.name) {
+      // Generate merchant history items
+      const items = Array.from({ length: 3 }, (_, i) => {
+        const randomDate = new Date();
+        randomDate.setDate(
+          randomDate.getDate() - Math.floor(Math.random() * 5)
+        );
+        const dateStr = randomDate.toISOString().split("T")[0];
+
+        return {
+          id: i + 1,
+          title: `${selectedMerchant.name} ${
+            i === 0 ? "Purchase" : i === 1 ? "Booking" : "Transaction"
+          }`,
+          subtitle: `${
+            i === 0
+              ? "Premium Plan"
+              : i === 1
+              ? "Weekend Reservation"
+              : "Service Fee"
+          }`,
+          date: dateStr,
+          amount: Math.floor(Math.random() * 200) + 50,
+          type: i === 0 ? "subscription" : i === 1 ? "booking" : "purchase",
+          category: selectedMerchant.name.toLowerCase().includes("airbnb")
+            ? "Travel"
+            : selectedMerchant.name.toLowerCase().includes("doordash")
+            ? "Food"
+            : "Service",
+        };
+      });
+
+      setMerchantHistory(items);
+    }
+  }, [selectedMerchant]);
+
+  // Helper function to get icon for merchant
+  const getMerchantIcon = (merchantName: string) => {
+    if (merchantName.toLowerCase().includes("airbnb")) {
+      return <ShoppingBag size={18} />;
+    } else if (merchantName.toLowerCase().includes("doordash")) {
+      return <ShoppingBag size={18} />;
+    } else {
+      return <ShoppingBag size={18} />;
+    }
+  };
+
+  // Helper function to get color for merchant
+  const getMerchantColor = (merchantName: string) => {
+    if (merchantName.toLowerCase().includes("airbnb")) {
+      return "text-pink-600";
+    } else if (merchantName.toLowerCase().includes("doordash")) {
+      return "text-red-600";
+    } else {
+      return "text-blue-600";
+    }
+  };
+
+  const [chatMessages, setChatMessages] = useState<
+    Array<{ role: "user" | "assistant"; content: string }>
+  >([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // Add this before the renderAIInsights function
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput("");
+
+    // Add user message to chat
+    setChatMessages((prev) => [
+      ...prev,
+      { role: "user", content: userMessage },
+    ]);
+
+    setIsChatLoading(true);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          insights: insights,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get response");
+      }
+
+      const data = await response.json();
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.response },
+      ]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            "Sorry, I encountered an error processing your request. Please try again.",
+        },
+      ]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -1663,7 +2207,7 @@ export default function DashboardPage() {
 
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {dealCategories.map((category) => (
-                          <button 
+            <button
               key={category}
               onClick={() => setActiveDealsFilter(category)}
               className={`${
@@ -1674,9 +2218,9 @@ export default function DashboardPage() {
             >
               {category.charAt(0).toUpperCase() + category.slice(1)}
               {category === "all" && " Deals"}
-                          </button>
+            </button>
           ))}
-                        </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {getFilteredDeals().map((deal) => (
@@ -1686,7 +2230,7 @@ export default function DashboardPage() {
             >
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                              <div>
+                  <div>
                     <h3 className="text-lg font-semibold">{deal.title}</h3>
                     <p className="text-sm text-gray-500">{deal.card}</p>
                   </div>
@@ -1744,49 +2288,49 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div>
               <label className="block mb-1 text-sm">Merchant Name *</label>
-                                <input
-                                  type="text"
-                                  name="merchant"
+              <input
+                type="text"
+                name="merchant"
                 value={transactionForm.merchant}
                 onChange={handleTransactionFormChange}
                 className="w-full border border-gray-300 rounded-lg p-2"
                 placeholder="e.g., Starbucks"
-                                  required
-                                />
-                              </div>
-                              
-                              <div>
+                required
+              />
+            </div>
+
+            <div>
               <label className="block mb-1 text-sm">Amount *</label>
-                                <input
-                                  type="number"
-                                  name="amount"
+              <input
+                type="number"
+                name="amount"
                 value={transactionForm.amount || ""}
                 onChange={handleTransactionFormChange}
                 className="w-full border border-gray-300 rounded-lg p-2"
-                                  step="0.01"
+                step="0.01"
                 min="0.01"
                 placeholder="0.00"
-                                  required
-                                />
-                              </div>
-                              
-                              <div>
+                required
+              />
+            </div>
+
+            <div>
               <label className="block mb-1 text-sm">Category</label>
-                                <select
-                                  name="category"
+              <select
+                name="category"
                 value={transactionForm.category}
                 onChange={handleTransactionFormChange}
                 className="w-full border border-gray-300 rounded-lg p-2"
-                                >
-                                  <option value="Dining">Dining</option>
-                                  <option value="Shopping">Shopping</option>
+              >
+                <option value="Dining">Dining</option>
+                <option value="Shopping">Shopping</option>
                 <option value="Travel">Travel</option>
-                                  <option value="Entertainment">Entertainment</option>
-                                  <option value="Other">Other</option>
-                                </select>
-                              </div>
-                              
-                              <div>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
               <label className="block mb-1 text-sm">Card *</label>
               <select
                 name="card"
@@ -1826,31 +2370,31 @@ export default function DashboardPage() {
                 value={transactionForm.date}
                 onChange={handleTransactionFormChange}
                 className="w-full border border-gray-300 rounded-lg p-2"
-                                />
-                              </div>
-                              
+              />
+            </div>
+
             <div className="flex justify-end gap-2 mt-6">
-                              <button
+              <button
                 onClick={() => setShowTransactionModal(false)}
                 className="border border-gray-300 px-4 py-2 rounded-lg"
-                              >
+              >
                 Cancel
-                              </button>
+              </button>
               <button
                 onClick={addTransaction}
                 className="bg-slate-900 text-white px-4 py-2 rounded-lg"
               >
                 Add Transaction
               </button>
-                          </div>
-                  </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 my-12">
       <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
 
       {/* Navigation Tabs */}
@@ -1875,8 +2419,8 @@ export default function DashboardPage() {
               >
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
               </svg>
-              Insights
-                    </span>
+              Activity
+            </span>
           </button>
 
           <button
@@ -1904,7 +2448,7 @@ export default function DashboardPage() {
             </span>
           </button>
 
-                      <button 
+          <button
             onClick={() => setActiveTab("ai-insights")}
             className={`pb-4 px-2 ${
               activeTab === "ai-insights"
@@ -1916,7 +2460,7 @@ export default function DashboardPage() {
               <Brain className="h-5 w-5" />
               AI Insights
             </span>
-                      </button>
+          </button>
 
           <button
             onClick={() => setActiveTab("entertainment")}
@@ -1941,7 +2485,7 @@ export default function DashboardPage() {
               Entertainment
             </span>
           </button>
-                            </div>
+        </div>
       </div>
 
       {/* Account Connection Section (Only visible on Insights tab) */}
@@ -1959,12 +2503,12 @@ export default function DashboardPage() {
                     {service.name}{" "}
                     <span className="text-xs text-gray-600">
                       {service.date}
-                                </span>
-                            </div>
+                    </span>
+                  </div>
                 ))}
-                          </div>
-                        </div>
-                        
+              </div>
+            </div>
+
             <div className="md:col-span-3">
               <h2 className="text-xl font-semibold mb-4">
                 Connect your accounts
@@ -1975,7 +2519,7 @@ export default function DashboardPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
+                <div>
                   <div className="mb-2">Select product:</div>
                   <div className="grid grid-cols-2 gap-4">
                     <button
@@ -1998,9 +2542,9 @@ export default function DashboardPage() {
                     >
                       Transaction Link
                     </button>
-                            </div>
-                          </div>
-                          
+                  </div>
+                </div>
+
                 <div>
                   <div className="mb-2">Select a merchant to connect:</div>
                   <div className="relative" ref={dropdownRef}>
@@ -2032,13 +2576,13 @@ export default function DashboardPage() {
                             {merchant.name} (ID: {merchant.id})
                           </button>
                         ))}
-                        </div>
-                    )}
                       </div>
-                </div>
+                    )}
                   </div>
-                  
-                      <button 
+                </div>
+              </div>
+
+              <button
                 className="bg-slate-900 text-white px-6 py-4 rounded-lg font-medium w-full"
                 onClick={connectWithKnot}
                 disabled={loading || !sdkLoaded}
@@ -2048,7 +2592,7 @@ export default function DashboardPage() {
                   : !sdkLoaded
                   ? "Loading Knot SDK..."
                   : "Connect Your Accounts with Knot"}
-                      </button>
+              </button>
 
               {knotError && (
                 <div className="mt-3 text-red-500 text-sm">{knotError}</div>
@@ -2059,8 +2603,8 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-                </div>
-              )}
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === "insights" && (
@@ -2093,7 +2637,7 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-                <div className="space-y-4">
+              <div className="space-y-4">
                 {transactionsList.slice(0, 6).map((tx) => (
                   <div
                     key={tx.id}
@@ -2103,24 +2647,24 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-md bg-purple-500 flex items-center justify-center text-white">
                           {tx.merchant.charAt(0)}
-                  </div>
+                        </div>
                         <div>
                           <div className="font-medium">{tx.merchant}</div>
                           <div className="text-sm text-gray-500">
                             {tx.card} • {tx.date}
-                  </div>
-                  </div>
-                  </div>
+                          </div>
+                        </div>
+                      </div>
                       <div className="text-right">
                         <div className="font-medium">
                           ${tx.amount.toFixed(2)}
-                </div>
+                        </div>
                         <div className="text-sm text-gray-500">
                           {tx.category}
-              </div>
-            </div>
-          </div>
-        </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -2131,14 +2675,544 @@ export default function DashboardPage() {
       {activeTab === "deals" && renderDeals()}
       {activeTab === "ai-insights" && renderAIInsights()}
       {activeTab === "entertainment" && (
-        <div className="py-8 text-center">
-          <h2 className="text-xl font-semibold mb-4">
-            Entertainment Recommendations
-          </h2>
-          <p>
-            Coming soon! Entertainment recommendations based on your spending
-            habits.
-          </p>
+        <div className="py-6">
+          <motion.div
+            className="bg-white rounded-lg shadow p-6 mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isLoaded ? 1 : 0, y: isLoaded ? 0 : 20 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <h2 className="text-xl font-semibold mb-4">Media History</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Netflix History */}
+              <div>
+                <div className="flex items-center mb-3">
+                  <div className="text-red-600 mr-2">
+                    <Video size={18} />
+                  </div>
+                  <h3 className="font-medium">Netflix History</h3>
+                  <span className="text-gray-500 text-sm ml-auto">
+                    {videoHistory.length} items
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {videoHistory.map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      className={`flex items-start ${
+                        index < videoHistory.length - 1 ? "border-b pb-3" : ""
+                      }`}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{
+                        opacity: isLoaded ? 1 : 0,
+                        x: isLoaded ? 0 : -10,
+                      }}
+                      transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
+                      whileHover={{
+                        scale: 1.02,
+                        transition: { duration: 0.2 },
+                      }}
+                    >
+                      <div className="w-12 h-12 bg-blue-100 rounded-md flex items-center justify-center mr-3">
+                        <span className="text-blue-500 font-bold">?</span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium">{item.title}</h4>
+                        <p className="text-sm text-gray-600">
+                          {item.season && item.episode
+                            ? `${item.season} ${item.episode} • `
+                            : ""}
+                          {item.duration}
+                        </p>
+                        <p className="text-sm text-gray-500">{item.date}</p>
+                        {item.genres && item.genres.length > 0 && (
+                          <div className="flex gap-2 mt-1">
+                            {item.genres.map((genre, idx) => (
+                              <span
+                                key={idx}
+                                className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded"
+                              >
+                                {genre}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Spotify History */}
+              <div>
+                <div className="flex items-center mb-3">
+                  <div className="text-green-600 mr-2">
+                    <Music size={18} />
+                  </div>
+                  <h3 className="font-medium">Spotify History</h3>
+                  <span className="text-gray-500 text-sm ml-auto">
+                    {musicHistory.length} tracks
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {musicHistory.map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      className={`flex items-start ${
+                        index < musicHistory.length - 1 ? "border-b pb-3" : ""
+                      }`}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{
+                        opacity: isLoaded ? 1 : 0,
+                        x: isLoaded ? 0 : 10,
+                      }}
+                      transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
+                      whileHover={{
+                        scale: 1.02,
+                        transition: { duration: 0.2 },
+                      }}
+                    >
+                      <div className="w-12 h-12 bg-blue-100 rounded-md flex items-center justify-center mr-3">
+                        <span className="text-blue-500 font-bold">?</span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium">{item.title}</h4>
+                        <p className="text-sm text-gray-600">{item.artist}</p>
+                        <p className="text-sm text-gray-500">
+                          Album: {item.album}
+                        </p>
+                        <p className="text-sm text-gray-500">{item.date}</p>
+                        <div className="text-right text-sm text-gray-400">
+                          {item.playCount}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selected Merchant History */}
+              {selectedMerchant &&
+                selectedMerchant.name &&
+                merchantHistory.length > 0 && (
+                  <div>
+                    <div className="flex items-center mb-3">
+                      <div
+                        className={`${getMerchantColor(
+                          selectedMerchant.name
+                        )} mr-2`}
+                      >
+                        {getMerchantIcon(selectedMerchant.name)}
+                      </div>
+                      <h3 className="font-medium">
+                        {selectedMerchant.name} Activity
+                      </h3>
+                      <span className="text-gray-500 text-sm ml-auto">
+                        {merchantHistory.length} items
+                      </span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {merchantHistory.map((item, index) => (
+                        <motion.div
+                          key={item.id}
+                          className={`flex items-start ${
+                            index < merchantHistory.length - 1
+                              ? "border-b pb-3"
+                              : ""
+                          }`}
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{
+                            opacity: isLoaded ? 1 : 0,
+                            x: isLoaded ? 0 : 10,
+                          }}
+                          transition={{
+                            duration: 0.3,
+                            delay: 0.2 + index * 0.1,
+                          }}
+                          whileHover={{
+                            scale: 1.02,
+                            transition: { duration: 0.2 },
+                          }}
+                        >
+                          <div className="w-12 h-12 bg-blue-100 rounded-md flex items-center justify-center mr-3">
+                            <span className="text-blue-500 font-bold">?</span>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium">{item.title}</h4>
+                            <p className="text-sm text-gray-600">
+                              {item.subtitle}
+                            </p>
+                            <p className="text-sm text-gray-500">{item.date}</p>
+                            {item.amount && (
+                              <div className="text-right text-sm text-gray-400">
+                                ${item.amount.toFixed(2)}
+                              </div>
+                            )}
+                            {item.category && (
+                              <div className="mt-1">
+                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                                  {item.category}
+                                </span>
+                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded ml-1 capitalize">
+                                  {item.type}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="bg-white rounded-lg shadow p-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isLoaded ? 1 : 0, y: isLoaded ? 0 : 20 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h2 className="text-xl font-semibold">Recommended for You</h2>
+              <div className="flex space-x-2">
+                <motion.button
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    entertainmentFilter === "all"
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                  onClick={() => handleEntertainmentFilter("all")}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  All
+                </motion.button>
+                <motion.button
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    entertainmentFilter === "concerts"
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                  onClick={() => handleEntertainmentFilter("concerts")}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Concerts
+                </motion.button>
+                <motion.button
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    entertainmentFilter === "musicals"
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                  onClick={() => handleEntertainmentFilter("musicals")}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Musicals
+                </motion.button>
+                <motion.button
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    entertainmentFilter === "shows"
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                  onClick={() => handleEntertainmentFilter("shows")}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Shows
+                </motion.button>
+                <motion.button
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    entertainmentFilter === "movies"
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                  onClick={() => handleEntertainmentFilter("movies")}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Movies
+                </motion.button>
+              </div>
+            </div>
+
+            {showEventsSection && (
+              <motion.div
+                className="mb-6"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: isLoaded ? 1 : 0, height: "auto" }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="flex items-center mb-2">
+                  <div className="text-blue-600 mr-2">
+                    <Video size={18} />
+                  </div>
+                  <h3 className="font-medium">
+                    Live Events ({getFilteredLiveEvents().length})
+                  </h3>
+                  <a
+                    href="#"
+                    className="text-blue-500 text-sm ml-auto hover:underline"
+                  >
+                    See all events
+                  </a>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                  {getFilteredLiveEvents()
+                    .slice(0, 3)
+                    .map((event, index) => (
+                      <motion.div
+                        key={event.id}
+                        className="border rounded-lg overflow-hidden"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{
+                          opacity: isLoaded ? 1 : 0,
+                          y: isLoaded ? 0 : 20,
+                        }}
+                        transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                        }}
+                      >
+                        <div className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium">{event.title}</h4>
+                              <p className="text-sm text-gray-500 mt-1">
+                                {event.date}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {event.venue}
+                              </p>
+                              <div className="flex gap-2 mt-2">
+                                {event.tags.map((tag, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded capitalize">
+                              {event.type}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center mt-4">
+                            <span className="font-medium text-lg">
+                              ${event.price.toFixed(2)}
+                            </span>
+                            <motion.button
+                              className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+                              whileHover={{
+                                scale: 1.05,
+                                backgroundColor: "#3b82f6",
+                              }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() =>
+                                toast.success(
+                                  `Tickets for ${event.title} added to cart!`
+                                )
+                              }
+                            >
+                              Get Tickets
+                            </motion.button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                </div>
+              </motion.div>
+            )}
+
+            {showMusicRecommendations && (
+              <motion.div
+                className="mt-8 mb-6"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: isLoaded ? 1 : 0, height: "auto" }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="flex items-center mb-2">
+                  <div className="text-blue-600 mr-2">
+                    <Music size={18} />
+                  </div>
+                  <h3 className="font-medium">Music Recommendations</h3>
+                  <a
+                    href="#"
+                    className="text-blue-500 text-sm ml-auto hover:underline"
+                  >
+                    See all music
+                  </a>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                  {getMusicRecommendations().map((album, index) => (
+                    <motion.div
+                      key={album.id}
+                      className="border rounded-lg overflow-hidden p-4"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{
+                        opacity: isLoaded ? 1 : 0,
+                        y: isLoaded ? 0 : 20,
+                      }}
+                      transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
+                      whileHover={{
+                        y: -5,
+                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                      }}
+                    >
+                      <div>
+                        <h4 className="font-medium">{album.title}</h4>
+                        <p className="text-sm text-gray-600">{album.artist}</p>
+                        <div className="flex gap-2 mt-2 mb-2">
+                          {album.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {album.year} • {album.tracks} tracks
+                        </p>
+                        <div className="flex justify-between items-center mt-4">
+                          <span className="font-medium">
+                            ${album.price.toFixed(2)}
+                          </span>
+                          <motion.button
+                            className="bg-green-500 text-white px-3 py-1 rounded text-sm"
+                            whileHover={{
+                              scale: 1.05,
+                              backgroundColor: "#22c55e",
+                            }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() =>
+                              toast.success(
+                                `Album ${album.title} added to cart!`
+                              )
+                            }
+                          >
+                            Buy Album
+                          </motion.button>
+                        </div>
+                        <p className="text-sm text-blue-500 mt-2">
+                          {album.promo}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {showMoviesSection && (
+              <motion.div
+                className="mt-8"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: isLoaded ? 1 : 0, height: "auto" }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="flex items-center mb-2">
+                  <div className="text-red-600 mr-2">
+                    <Video size={18} />
+                  </div>
+                  <h3 className="font-medium">Shows & Movies For You</h3>
+                  <a
+                    href="#"
+                    className="text-blue-500 text-sm ml-auto hover:underline"
+                  >
+                    See all recommendations
+                  </a>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                  {getRecommendedShows()
+                    .slice(0, 3)
+                    .map((show, index) => (
+                      <motion.div
+                        key={show.id}
+                        className="border rounded-lg overflow-hidden p-4"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{
+                          opacity: isLoaded ? 1 : 0,
+                          y: isLoaded ? 0 : 20,
+                        }}
+                        transition={{ duration: 0.4, delay: 0.6 + index * 0.1 }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                        }}
+                      >
+                        <div className="flex items-center mb-2">
+                          <div className="text-red-600 mr-2">
+                            <Video size={16} />
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{show.title}</h4>
+                            <p className="text-xs text-gray-600">
+                              {show.platform}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center mb-2">
+                          <span className="text-yellow-500 mr-1">★</span>
+                          <span className="text-sm">{show.rating}</span>
+                          <span className="text-sm text-gray-500 mx-2">•</span>
+                          <span className="text-sm text-gray-500">
+                            {show.year}
+                          </span>
+                          <span className="text-sm text-gray-500 mx-2">•</span>
+                          <span className="text-sm text-gray-500">
+                            {show.seasons || show.duration}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 mb-3 flex-wrap">
+                          {show.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Cast: {show.cast}
+                        </p>
+                        <p className="text-sm text-blue-500">{show.promo}</p>
+                        <motion.button
+                          className="mt-3 bg-red-500 text-white px-3 py-1 rounded text-sm w-full"
+                          whileHover={{
+                            scale: 1.02,
+                            backgroundColor: "#ef4444",
+                          }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() =>
+                            toast.success(
+                              `Opening ${show.title} on ${show.platform}!`
+                            )
+                          }
+                        >
+                          Watch Now
+                        </motion.button>
+                      </motion.div>
+                    ))}
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
         </div>
       )}
 
