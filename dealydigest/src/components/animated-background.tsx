@@ -70,14 +70,14 @@ export default function AnimatedBackground() {
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
         ctx.fillStyle = particle.color;
-        ctx.globalAlpha = 0.15;
+        ctx.globalAlpha = 0.4;
         ctx.fill();
       });
       
       // Draw connections between particles
-      ctx.globalAlpha = 0.03;
+      ctx.globalAlpha = 0.1;
       ctx.strokeStyle = "#94a3b8";
-      ctx.lineWidth = 0.3;
+      ctx.lineWidth = 0.5;
       
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
@@ -115,11 +115,12 @@ export default function AnimatedBackground() {
       animate={{ opacity: 1 }}
       transition={{ duration: 1 }}
     >
+      <div className="absolute inset-0 bg-white" />
+      
       <canvas
         ref={canvasRef}
         className="absolute top-0 left-0 w-full h-full"
       />
-      <div className="absolute inset-0 bg-white" />
     </motion.div>
   );
 } 
