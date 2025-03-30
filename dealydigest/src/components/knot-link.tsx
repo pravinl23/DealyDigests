@@ -41,6 +41,17 @@ const KnotLink = () => {
   );
   const [selectedProduct, setSelectedProduct] =
     useState<Product>("card_switcher");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // Try to check if SDK is already loaded on mount
+    if (typeof window !== 'undefined' && window.knotapi) {
+      setSdkLoaded(true);
+      console.log("Knot SDK already available on mount");
+    }
+    return () => setMounted(false);
+  }, []);
 
   // Function to create a session from our API
   const createSession = useCallback(async () => {
@@ -124,9 +135,23 @@ const KnotLink = () => {
   // Function to open Knot Link with the SDK
   const openKnotLink = useCallback(
     async (sid: string) => {
+      if (!mounted) {
+        console.warn("Component not mounted yet");
+        return;
+      }
+      
       if (!sdkLoaded) {
         console.warn("SDK not loaded yet");
-        return;
+        
+        // Retry checking for SDK
+        if (typeof window !== 'undefined' && window.knotapi) {
+          console.log("Found Knot SDK on window object, proceeding...");
+          setSdkLoaded(true);
+        } else {
+          setError("Knot SDK not loaded. Please refresh the page and try again.");
+          setLoading(false);
+          return;
+        }
       }
 
       try {
@@ -222,13 +247,18 @@ const KnotLink = () => {
         setLoading(false);
       }
     },
-    [sdkLoaded, selectedMerchant, selectedProduct]
+    [sdkLoaded, selectedMerchant, selectedProduct, mounted]
   );
 
   // Initiate Knot Link flow
   const initiateKnotLink = useCallback(async () => {
     if (!user) {
       setError("You must be logged in to connect with Knot");
+      return;
+    }
+
+    if (!mounted) {
+      setError("Component not fully mounted yet. Please try again.");
       return;
     }
 
@@ -246,7 +276,7 @@ const KnotLink = () => {
       );
       setLoading(false);
     }
-  }, [user, createSession, openKnotLink]);
+  }, [user, createSession, openKnotLink, mounted]);
 
   // Handle SDK load
   const handleSdkLoad = useCallback(() => {
@@ -265,7 +295,7 @@ const KnotLink = () => {
   };
 
   return (
-    <div className="my-4 w-full max-w-md p-4 bg-gray-50 rounded-lg shadow-sm">
+    <div className="my-4 w-full max-w-md p-4 bg-white rounded-lg shadow-sm border border-gray-200">
       <KnotScript onLoad={handleSdkLoad} />
       <h3 className="text-lg font-medium mb-2">Connect your accounts</h3>
       <p className="text-sm text-gray-600 mb-4">
@@ -346,7 +376,7 @@ const KnotLink = () => {
 
       <button
         onClick={initiateKnotLink}
-        disabled={loading}
+        disabled={loading || !sdkLoaded}
         className="w-full rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-500 disabled:bg-blue-300 flex items-center justify-center"
       >
         {loading ? (
@@ -373,12 +403,17 @@ const KnotLink = () => {
             </svg>
             Connecting...
           </>
+        ) : !sdkLoaded ? (
+          <>Loading Knot SDK...</>
         ) : (
           <>Connect Your Accounts with Knot</>
         )}
       </button>
       {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
       <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
+        <p className="font-mono">
+          SDK Loaded: {sdkLoaded ? "Yes" : "No"}
+        </p>
         <p className="font-mono">
           Client ID:{" "}
           {process.env.NEXT_PUBLIC_KNOT_CLIENT_ID ||

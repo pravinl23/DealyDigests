@@ -15,29 +15,44 @@ export default function KnotScript({ onLoad }: KnotScriptProps) {
     // Only run in browser
     if (typeof window === "undefined" || initialized) return;
 
-    const initKnot = async () => {
-      try {
-        console.log("Initializing KnotapiJS from npm package");
+    // Delay initialization slightly to ensure DOM is fully rendered
+    const timeoutId = setTimeout(() => {
+      const initKnot = async () => {
+        try {
+          console.log("Initializing KnotapiJS from npm package");
 
-        // Import according to their example
-        const KnotapiJSModule = await import("knotapi-js");
-        const KnotapiJS = KnotapiJSModule.default;
+          // Check if it's already initialized
+          if (window.knotapi) {
+            console.log("KnotapiJS already initialized");
+            setInitialized(true);
+            if (onLoad) onLoad();
+            return;
+          }
 
-        // Create a new instance as shown in the docs
-        window.knotapi = new KnotapiJS();
+          // Import according to their example
+          const KnotapiJSModule = await import("knotapi-js");
+          const KnotapiJS = KnotapiJSModule.default;
 
-        console.log("KnotapiJS initialized successfully");
+          // Create a new instance as shown in the docs
+          window.knotapi = new KnotapiJS();
 
-        setInitialized(true);
-        if (onLoad) onLoad();
-      } catch (error) {
-        console.error("Error initializing KnotapiJS:", error);
-        setError(error instanceof Error ? error : new Error(String(error)));
-        // Don't call onLoad if there was an error to prevent further issues
-      }
+          console.log("KnotapiJS initialized successfully");
+
+          setInitialized(true);
+          if (onLoad) onLoad();
+        } catch (error) {
+          console.error("Error initializing KnotapiJS:", error);
+          setError(error instanceof Error ? error : new Error(String(error)));
+          // Don't call onLoad if there was an error to prevent further issues
+        }
+      };
+
+      initKnot();
+    }, 500); // 500ms delay to ensure DOM is ready
+
+    return () => {
+      clearTimeout(timeoutId);
     };
-
-    initKnot();
   }, [initialized, onLoad]);
 
   return null;

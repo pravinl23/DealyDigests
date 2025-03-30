@@ -12,6 +12,7 @@
     "@auth0/nextjs-auth0": "^3.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.6.2",
     "knotapi-js": "^1.0.0",
     "lucide-react": "^0.485.0",
     "mongodb": "^6.15.0",
@@ -26,10 +27,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
+    "@types/node": "20.17.28",
+    "@types/react": "19.0.12",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "5.8.2"
   }
 }
