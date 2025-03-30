@@ -41,7 +41,7 @@ export default function MediaHistorySection() {
             title: "Stranger Things",
             type: "Series",
             genre: ["Sci-Fi", "Drama", "Horror"],
-            watchDate: new Date("2025-01-20").toISOString(),
+            watchDate: new Date("2025-03-25").toISOString(),
             duration: 50
           },
           {
@@ -49,7 +49,7 @@ export default function MediaHistorySection() {
             title: "The Queen's Gambit",
             type: "Series",
             genre: ["Drama"],
-            watchDate: new Date("2025-01-15").toISOString(),
+            watchDate: new Date("2025-03-20").toISOString(),
             duration: 60
           },
           {
@@ -57,7 +57,7 @@ export default function MediaHistorySection() {
             title: "Hamilton",
             type: "Musical",
             genre: ["Musical", "Drama", "Historical"],
-            watchDate: new Date("2025-01-05").toISOString(),
+            watchDate: new Date("2025-03-15").toISOString(),
             duration: 160
           },
           {
@@ -65,7 +65,7 @@ export default function MediaHistorySection() {
             title: "Black Mirror",
             type: "Series",
             genre: ["Sci-Fi", "Drama", "Thriller"],
-            watchDate: new Date("2025-01-01").toISOString(),
+            watchDate: new Date("2025-03-27").toISOString(),
             duration: 45
           },
           {
@@ -73,7 +73,7 @@ export default function MediaHistorySection() {
             title: "La La Land",
             type: "Movie",
             genre: ["Musical", "Romance", "Drama"],
-            watchDate: new Date("2024-12-28").toISOString(),
+            watchDate: new Date("2025-03-22").toISOString(),
             duration: 128
           }
         ]
@@ -84,7 +84,7 @@ export default function MediaHistorySection() {
             trackName: "Bohemian Rhapsody",
             artist: "Queen",
             genre: ["Rock", "Classic Rock"],
-            listenDate: new Date("2025-01-25").toISOString(),
+            listenDate: new Date("2025-03-29").toISOString(),
             duration: 6
           },
           {
@@ -92,7 +92,7 @@ export default function MediaHistorySection() {
             trackName: "Welcome to the Black Parade",
             artist: "My Chemical Romance",
             genre: ["Rock", "Alternative", "Emo"],
-            listenDate: new Date("2025-01-22").toISOString(),
+            listenDate: new Date("2025-03-28").toISOString(),
             duration: 5
           },
           {
@@ -100,7 +100,7 @@ export default function MediaHistorySection() {
             trackName: "My Shot",
             artist: "Hamilton Cast",
             genre: ["Musical", "Broadway", "Rap"],
-            listenDate: new Date("2025-01-18").toISOString(),
+            listenDate: new Date("2025-03-26").toISOString(),
             duration: 5
           },
           {
@@ -108,7 +108,7 @@ export default function MediaHistorySection() {
             trackName: "City of Stars",
             artist: "Ryan Gosling & Emma Stone",
             genre: ["Soundtrack", "Jazz"],
-            listenDate: new Date("2025-01-10").toISOString(),
+            listenDate: new Date("2025-03-24").toISOString(),
             duration: 4
           },
           {
@@ -116,7 +116,7 @@ export default function MediaHistorySection() {
             trackName: "Running Up That Hill",
             artist: "Kate Bush",
             genre: ["Pop", "Alternative"],
-            listenDate: new Date("2025-01-05").toISOString(),
+            listenDate: new Date("2025-03-21").toISOString(),
             duration: 5
           }
         ]
