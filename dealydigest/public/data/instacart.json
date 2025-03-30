@@ -1,0 +1,79 @@
+instacart
+
+{
+    "merchant": {
+        "id": 40,
+        "name": "Instacart"
+    },
+    "transactions": [
+        {
+            "id": "39317",
+            "external_id": "022816292767848411972",
+            "datetime": "2025-02-28T12:41:00+00:00",
+            "url": "https://www.instacart.com/store/orders/022816292767848411972",
+            "order_status": "PICKED_UP",
+            "payment_methods": [
+                {
+                    "external_id": null,
+                    "type": "CARD",
+                    "brand": "AMEX",
+                    "last_four": "1008",
+                    "name": null,
+                    "transaction_amount": null
+                }
+            ],
+            "price": {
+                "sub_total": 15.38,
+                "adjustments": [
+                    {
+                        "type": "FEE",
+                        "label": "Checkout Bag Fee",
+                        "amount": 0.1
+                    }
+                ],
+                "total": 15.48,
+                "currency": "USD"
+            },
+            "products": [
+                {
+                    "external_id": "25501510",
+                    "name": "Eataly Banana",
+                    "url": "https://www.instacart.com/products/25501510-eataly-banana-1-ct",
+                    "quantity": 1.65,
+                    "eligibility": [],
+                    "price": {
+                        "sub_total": 1.8,
+                        "total": 1.8,
+                        "unit_price": 1.09
+                    }
+                },
+                {
+                    "external_id": "17090648",
+                    "name": "Driscoll's Organic Blackberries",
+                    "url": "https://www.instacart.com/products/17090648-driscoll-s-organic-blackberries-6-oz",
+                    "quantity": 1,
+                    "eligibility": [],
+                    "price": {
+                        "sub_total": 6.99,
+                        "total": 6.99,
+                        "unit_price": 6.99
+                    }
+                },
+                {
+                    "external_id": "21524219",
+                    "name": "Eataly Half Focaccia Sandwich Loaf",
+                    "url": "https://www.instacart.com/products/21524219-eataly-half-focaccia-sandwich-loaf-each",
+                    "quantity": 1,
+                    "eligibility": [],
+                    "price": {
+                        "sub_total": 6.59,
+                        "total": 6.59,
+                        "unit_price": 6.59
+                    }
+                }
+            ]
+        }
+    ],
+    "next_cursor": null,
+    "limit": 5
+}

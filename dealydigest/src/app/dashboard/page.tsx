@@ -4,11 +4,35 @@ import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ChevronDown, Music, Video, ShoppingBag } from "lucide-react";
+import { ChevronDown, Music, Video, ShoppingBag, X, Plus } from "lucide-react";
 import KnotScript from "@/components/knot-script";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // Types for Knot SDK
 type Product = "card_switcher" | "transaction_link";
+
+// Transaction form type
+interface TransactionFormData {
+  merchant: string;
+  amount: number;
+  category: string;
+  card: string;
+  date: string;
+}
+
+// Update deal type to include category
+type Deal = {
+  id: number;
+  title: string;
+  type: string;
+  card: string;
+  amount: string;
+  expires: string;
+  description: string;
+  details: string;
+  category: string;
+};
 
 export default function DashboardPage() {
   const { user, error, isLoading } = useUser();
@@ -35,6 +59,17 @@ export default function DashboardPage() {
     { id: 16, name: "Netflix", connected: true },
     { id: 19, name: "DoorDash", connected: true },
   ]);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [transactionForm, setTransactionForm] = useState<TransactionFormData>({
+    merchant: "",
+    amount: 0,
+    category: "Dining",
+    card: "",
+    date: new Date().toISOString().split("T")[0],
+  });
+  const [activeDealsFilter, setActiveDealsFilter] = useState("all");
+  const [dealsList, setDealsList] = useState<Deal[]>([]);
+  const [transactionsList, setTransactionsList] = useState<any[]>([]);
 
   // Sample connected services
   const connectedServices = [
@@ -43,7 +78,7 @@ export default function DashboardPage() {
   ];
 
   // Sample transactions
-  const transactions = [
+  const initialTransactions = [
     {
       id: 1,
       merchant: "Netflix",
@@ -84,6 +119,46 @@ export default function DashboardPage() {
       card: "Chase Chase Sapphire Reserve",
       category: "Dining",
     },
+    {
+      id: 6,
+      merchant: "Whole Foods",
+      amount: 82.47,
+      date: "4 days ago",
+      card: "Chase Freedom Unlimited",
+      category: "Grocery",
+    },
+    {
+      id: 7,
+      merchant: "Apple",
+      amount: 249.99,
+      date: "1 week ago",
+      card: "Chase Chase Sapphire Reserve",
+      category: "Technology",
+    },
+    {
+      id: 8,
+      merchant: "Delta Airlines",
+      amount: 450.0,
+      date: "2 weeks ago",
+      card: "Chase Chase Sapphire Reserve",
+      category: "Travel",
+    },
+    {
+      id: 9,
+      merchant: "Target",
+      amount: 67.32,
+      date: "5 days ago",
+      card: "Chase Freedom Unlimited",
+      category: "Shopping",
+    },
+    {
+      id: 10,
+      merchant: "Cheesecake Factory",
+      amount: 94.75,
+      date: "3 days ago",
+      card: "Chase Chase Sapphire Reserve",
+      category: "Dining",
+    },
   ];
 
   // Available merchants list
@@ -102,7 +177,7 @@ export default function DashboardPage() {
   ];
 
   // Sample deals for the deals tab
-  const deals = [
+  const initialDeals = [
     {
       id: 1,
       title: "Earn 5% back on Chase Dining",
@@ -114,6 +189,7 @@ export default function DashboardPage() {
         "Use your Chase Sapphire Reserve for dining purchases and earn 5% back.",
       details:
         "Valid at select restaurants only. Maximum cash back of $50 per month.",
+      category: "dining",
     },
     {
       id: 2,
@@ -126,6 +202,7 @@ export default function DashboardPage() {
         "Book a flight with your Chase Sapphire Reserve and get $50 off.",
       details:
         "Valid for flights booked directly with United Airlines. Minimum purchase of $200.",
+      category: "travel",
     },
     {
       id: 3,
@@ -138,6 +215,7 @@ export default function DashboardPage() {
         "Get 10% back on Amazon purchases with your Freedom Unlimited card.",
       details:
         "Maximum cash back of $30. Valid for purchases made directly on Amazon.com.",
+      category: "shopping",
     },
     {
       id: 4,
@@ -150,7 +228,64 @@ export default function DashboardPage() {
         "Subscribe to Disney+ and get 3 months free when you pay with your Chase card.",
       details:
         "New Disney+ subscribers only. After 3 months, standard subscription fee applies.",
+      category: "entertainment",
     },
+    {
+      id: 5,
+      title: "15% off at Best Buy",
+      type: "Limited Time",
+      card: "Freedom Unlimited",
+      amount: "15%",
+      expires: "Jun 15, 2025",
+      description:
+        "Shop at Best Buy with your Freedom Unlimited card and save 15%.",
+      details: "Valid on purchases over $100. Maximum discount of $75.",
+      category: "shopping",
+    },
+    {
+      id: 6,
+      title: "4X Points on Hotels",
+      type: "New Offer",
+      card: "Chase Sapphire Reserve",
+      amount: "4X",
+      expires: "Aug 31, 2025",
+      description: "Earn 4X points when booking hotels through Chase Travel.",
+      details: "Valid for bookings made directly through Chase Travel portal.",
+      category: "travel",
+    },
+    {
+      id: 7,
+      title: "20% off at Chipotle",
+      type: "New Offer",
+      card: "Any Chase Card",
+      amount: "20%",
+      expires: "Jul 10, 2025",
+      description:
+        "Get 20% off your order at Chipotle when you pay with any Chase card.",
+      details: "Valid for in-store and online orders. Maximum discount of $15.",
+      category: "dining",
+    },
+    {
+      id: 8,
+      title: "2 Free Months of Spotify Premium",
+      type: "Limited Time",
+      card: "Chase Sapphire Reserve",
+      amount: "2 months",
+      expires: "Sep 15, 2025",
+      description: "Subscribe to Spotify Premium and get 2 months free.",
+      details:
+        "New Spotify Premium subscribers only. After 2 months, standard subscription fee applies.",
+      category: "entertainment",
+    },
+  ];
+
+  // Sample deals categories for filtering
+  const dealCategories = [
+    "all",
+    "dining",
+    "travel",
+    "shopping",
+    "entertainment",
   ];
 
   // Function to fetch user cards
@@ -721,6 +856,158 @@ export default function DashboardPage() {
     );
   };
 
+  // Initialize deals and transactions on component mount
+  useEffect(() => {
+    setDealsList(initialDeals);
+    setTransactionsList(initialTransactions);
+  }, []);
+
+  // Add transaction function
+  const addTransaction = () => {
+    // Validate form
+    if (
+      !transactionForm.merchant ||
+      transactionForm.amount <= 0 ||
+      !transactionForm.card
+    ) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    // Create new transaction
+    const newTransaction = {
+      id: Date.now(),
+      merchant: transactionForm.merchant,
+      amount: transactionForm.amount,
+      date: "just now",
+      card: transactionForm.card,
+      category: transactionForm.category,
+    };
+
+    // Add to transactions list
+    setTransactionsList((prev) => [newTransaction, ...prev]);
+
+    // Close modal and reset form
+    setShowTransactionModal(false);
+    setTransactionForm({
+      merchant: "",
+      amount: 0,
+      category: "Dining",
+      card: "",
+      date: new Date().toISOString().split("T")[0],
+    });
+
+    // Show success toast
+    toast.success(
+      `Transaction added: ${
+        transactionForm.merchant
+      } - $${transactionForm.amount.toFixed(2)}`
+    );
+  };
+
+  // Handle transaction form changes
+  const handleTransactionFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setTransactionForm({
+      ...transactionForm,
+      [name]: name === "amount" ? parseFloat(value) : value,
+    });
+  };
+
+  // New deal generator
+  useEffect(() => {
+    if (activeTab === "deals") {
+      // Add immediate demo deal for fast feedback
+      setTimeout(() => {
+        const newDeal = generateRandomDeal();
+        setDealsList((prev) => [newDeal, ...prev]);
+        toast.info(`New offer found: ${newDeal.title}`, {
+          icon: "🎁" as any,
+        });
+      }, 3000);
+
+      const dealInterval = setInterval(() => {
+        // Generate random deal
+        const newDeal = generateRandomDeal();
+
+        // Add to deals list
+        setDealsList((prev) => [newDeal, ...prev]);
+
+        // Show toast
+        toast.info(`New offer found: ${newDeal.title}`, {
+          icon: "🎁" as any,
+        });
+      }, 10000);
+
+      return () => clearInterval(dealInterval);
+    }
+  }, [activeTab]);
+
+  // Generate random deal
+  const generateRandomDeal = () => {
+    const dealTypes = ["New Offer", "Limited Time"];
+    const cards = [
+      "Chase Sapphire Reserve",
+      "Freedom Unlimited",
+      "Any Chase Card",
+    ];
+    const categories = ["Dining", "Travel", "Shopping", "Entertainment"];
+    const merchants = [
+      "Amazon",
+      "Uber",
+      "Starbucks",
+      "Target",
+      "Best Buy",
+      "Apple",
+      "DoorDash",
+    ];
+
+    const randomMerchant =
+      merchants[Math.floor(Math.random() * merchants.length)];
+    const randomCategory =
+      categories[Math.floor(Math.random() * categories.length)];
+    const randomCard = cards[Math.floor(Math.random() * cards.length)];
+
+    return {
+      id: Date.now(),
+      title: `${Math.floor(Math.random() * 20) + 5}% back at ${randomMerchant}`,
+      type: dealTypes[Math.floor(Math.random() * dealTypes.length)],
+      card: randomCard,
+      amount: `${Math.floor(Math.random() * 20) + 5}%`,
+      expires: `${
+        ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"][
+          Math.floor(Math.random() * 7)
+        ]
+      } ${Math.floor(Math.random() * 28) + 1}, 2025`,
+      description: `Use your ${randomCard} at ${randomMerchant} and earn extra rewards.`,
+      details: `Valid for ${randomCategory.toLowerCase()} purchases. Maximum cash back of $${
+        Math.floor(Math.random() * 50) + 10
+      }.`,
+      category: randomCategory.toLowerCase(),
+    };
+  };
+
+  // Filter deals by category
+  const getFilteredDeals = () => {
+    if (activeDealsFilter === "all") {
+      return dealsList;
+    }
+    return dealsList.filter((deal) => deal.category === activeDealsFilter);
+  };
+
+  // Handle deal action
+  const handleDealAction = (dealId: number) => {
+    toast.success(`Deal activated! Check your email for details.`);
+    // Mark the deal as activated in the UI if needed
+    setDealsList((prev) =>
+      prev.map((deal) =>
+        deal.id === dealId ? { ...deal, activated: true } : deal
+      )
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -744,7 +1031,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold">Available Deals</h2>
           <span className="bg-slate-800 text-white text-sm px-3 py-1 rounded-full">
-            8 Offers
+            {getFilteredDeals().length} Offers
           </span>
         </div>
         <p className="mb-4 text-gray-600">
@@ -752,26 +1039,25 @@ export default function DashboardPage() {
           card benefits.
         </p>
 
-        <div className="flex gap-2 mb-6">
-          <button className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm">
-            All Deals
-          </button>
-          <button className="bg-transparent border border-gray-300 px-4 py-2 rounded-full text-sm">
-            Dining
-          </button>
-          <button className="bg-transparent border border-gray-300 px-4 py-2 rounded-full text-sm">
-            Travel
-          </button>
-          <button className="bg-transparent border border-gray-300 px-4 py-2 rounded-full text-sm">
-            Shopping
-          </button>
-          <button className="bg-transparent border border-gray-300 px-4 py-2 rounded-full text-sm">
-            Entertainment
-          </button>
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+          {dealCategories.map((category) => (
+            <button
+              key={category}
+              onClick={() => setActiveDealsFilter(category)}
+              className={`${
+                activeDealsFilter === category
+                  ? "bg-slate-900 text-white"
+                  : "bg-transparent border border-gray-300"
+              } px-4 py-2 rounded-full text-sm whitespace-nowrap`}
+            >
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+              {category === "all" && " Deals"}
+            </button>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {deals.map((deal) => (
+          {getFilteredDeals().map((deal) => (
             <div
               key={deal.id}
               className="border border-gray-200 rounded-lg overflow-hidden"
@@ -801,21 +1087,141 @@ export default function DashboardPage() {
 
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-gray-500">
-                    {deal.type === "Limited Time" && (
-                      <div>
-                        Valid at select restaurants only. Maximum cash back of
-                        $50 per month.
-                      </div>
-                    )}
+                    <div>{deal.details}</div>
                     <div>Expires: {deal.expires}</div>
                   </div>
-                  <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm">
-                    View Details
+                  <button
+                    className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm"
+                    onClick={() => handleDealAction(deal.id)}
+                  >
+                    Activate Deal
                   </button>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render transaction modal
+  const renderTransactionModal = () => {
+    if (!showTransactionModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Add Transaction</h2>
+            <button onClick={() => setShowTransactionModal(false)}>
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-1 text-sm">Merchant Name *</label>
+              <input
+                type="text"
+                name="merchant"
+                value={transactionForm.merchant}
+                onChange={handleTransactionFormChange}
+                className="w-full border border-gray-300 rounded-lg p-2"
+                placeholder="e.g., Starbucks"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm">Amount *</label>
+              <input
+                type="number"
+                name="amount"
+                value={transactionForm.amount || ""}
+                onChange={handleTransactionFormChange}
+                className="w-full border border-gray-300 rounded-lg p-2"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm">Category</label>
+              <select
+                name="category"
+                value={transactionForm.category}
+                onChange={handleTransactionFormChange}
+                className="w-full border border-gray-300 rounded-lg p-2"
+              >
+                <option value="Dining">Dining</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Travel">Travel</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm">Card *</label>
+              <select
+                name="card"
+                value={transactionForm.card}
+                onChange={handleTransactionFormChange}
+                className="w-full border border-gray-300 rounded-lg p-2"
+                required
+              >
+                <option value="">Select a card</option>
+                {userCards.length > 0 ? (
+                  userCards.map((card, index) => (
+                    <option
+                      key={index}
+                      value={card.name || `Card ending in ${card.last4}`}
+                    >
+                      {card.name || `Card ending in ${card.last4}`}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Chase Freedom Unlimited">
+                      Chase Freedom Unlimited
+                    </option>
+                    <option value="Chase Chase Sapphire Reserve">
+                      Chase Sapphire Reserve
+                    </option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm">Date</label>
+              <input
+                type="date"
+                name="date"
+                value={transactionForm.date}
+                onChange={handleTransactionFormChange}
+                className="w-full border border-gray-300 rounded-lg p-2"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setShowTransactionModal(false)}
+                className="border border-gray-300 px-4 py-2 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addTransaction}
+                className="bg-slate-900 text-white px-4 py-2 rounded-lg"
+              >
+                Add Transaction
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1088,15 +1494,16 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Recent Transactions</h2>
-                <button className="bg-slate-900 text-white px-3 py-1 rounded-lg text-sm">
-                  Add
+                <button
+                  className="bg-slate-900 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                  onClick={() => setShowTransactionModal(true)}
+                >
+                  <Plus className="h-4 w-4" /> Add
                 </button>
               </div>
 
-              <h2 className="mb-2 font-medium">Recent Transactions</h2>
-
               <div className="space-y-4">
-                {transactions.map((tx) => (
+                {transactionsList.slice(0, 6).map((tx) => (
                   <div
                     key={tx.id}
                     className="border border-gray-200 rounded-lg p-4"
@@ -1145,6 +1552,22 @@ export default function DashboardPage() {
 
       {/* Include Knot Script */}
       <KnotScript onLoad={handleSdkLoad} onError={handleSdkError} />
+
+      {/* Transaction Modal */}
+      {renderTransactionModal()}
+
+      {/* Toast Container */}
+      <ToastContainer
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }
