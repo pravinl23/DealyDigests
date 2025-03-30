@@ -1,16 +1,16 @@
-import { MongoClient, MongoClientOptions } from 'mongodb';
+import { MongoClient, ServerApiVersion } from 'mongodb';
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Please add your Mongo URI to .env.local');
 }
 
 const uri = process.env.MONGODB_URI;
-const options: MongoClientOptions = {
-  maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-  authSource: 'admin',
-  authMechanism: 'SCRAM-SHA-1'
+const options = {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
 };
 
 let client: MongoClient | null = null;
@@ -25,9 +25,10 @@ export async function connectToDatabase() {
     client = new MongoClient(uri, options);
     clientPromise = client.connect();
     
+    // Test the connection
     const testClient = await clientPromise;
-    await testClient.db('admin').command({ ping: 1 });
-    console.log('Successfully connected to MongoDB');
+    await testClient.db("admin").command({ ping: 1 });
+    console.log("Successfully connected to MongoDB!");
     
     return clientPromise;
   } catch (error) {
@@ -77,6 +78,56 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   }
 }
 
+// Create a new user with placeholder data
+export async function createPlaceholderUser(email: string): Promise<User | null> {
+  if (typeof window !== 'undefined') {
+    throw new Error('This function can only be used in server-side code');
+  }
+
+  try {
+    const client = await connectToDatabase();
+    const db = client.db('swipeDB');
+    
+    // Create a basic user with empty credit cards array
+    const newUser = {
+      email,
+      username: email.split('@')[0],
+      created_at: new Date().toISOString(),
+      apple_pay_cards: [],
+      credit_cards: [] // Empty array instead of sample card
+    };
+    
+    // Insert the new user
+    const result = await db.collection('users').insertOne(newUser);
+    
+    if (result.acknowledged) {
+      console.log(`Created new user account for email: ${email}`);
+      return {
+        _id: result.insertedId.toString(),
+        ...newUser
+      } as User;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return null;
+  }
+}
+
+export async function findOrCreateUser(email: string): Promise<User | null> {
+  // First try to find the existing user
+  let user = await getUserByEmail(email);
+  
+  // If user doesn't exist, create a placeholder
+  if (!user) {
+    console.log(`User not found with email: ${email}, creating placeholder...`);
+    user = await createPlaceholderUser(email);
+  }
+  
+  return user;
+}
+
 export async function updateUserCreditCards(email: string, creditCards: CreditCard[]): Promise<boolean> {
   if (typeof window !== 'undefined') {
     throw new Error('This function can only be used in server-side code');
@@ -85,11 +136,22 @@ export async function updateUserCreditCards(email: string, creditCards: CreditCa
   try {
     const client = await connectToDatabase();
     const db = client.db('swipeDB');
+    
+    // Check if user exists first
+    const userExists = await db.collection('users').findOne({ email });
+    
+    if (!userExists) {
+      // Create the user first, then we'll update in the next step
+      await createPlaceholderUser(email);
+    }
+    
     const result = await db.collection('users').updateOne(
       { email },
-      { $set: { credit_cards: creditCards } }
+      { $set: { credit_cards: creditCards } },
+      { upsert: true } // Create if doesn't exist
     );
-    return result.modifiedCount > 0;
+    
+    return result.modifiedCount > 0 || result.upsertedCount > 0;
   } catch (error) {
     console.error('Error updating user credit cards:', error);
     return false;

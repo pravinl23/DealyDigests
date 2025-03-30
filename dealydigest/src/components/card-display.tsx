@@ -62,8 +62,16 @@ export function CardDisplay({ card }: CardDisplayProps) {
 }
 
 export function CardsList({ userEmail }: { userEmail: string }) {
+  // Validate userEmail is a proper string
+  const isValidEmail = typeof userEmail === 'string' && userEmail.trim() !== '';
+  
+  console.log('CardsList rendered with userEmail:', userEmail, 'isValid:', isValidEmail);
+  
   const [cards, setCards] = useState<CardDisplayProps['card'][]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [directEmail, setDirectEmail] = useState<string | null>(null);
   const [formData, setFormData] = useState<CardFormData>({
     cardName: "",
     cardNumber: "",
@@ -73,34 +81,123 @@ export function CardsList({ userEmail }: { userEmail: string }) {
     type: "credit"
   });
 
+  // Placeholder account detection
+  const [isPlaceholderAccount, setIsPlaceholderAccount] = useState(false);
+
+  // If userEmail is not provided, try to get it directly from Auth0
   useEffect(() => {
+    if (!isValidEmail) {
+      console.log('Attempting direct Auth0 session check...');
+      // Try to get the email directly from Auth0's session endpoint
+      fetch('/api/auth/me')
+        .then(response => response.json())
+        .then(data => {
+          console.log('Direct Auth0 session response:', data);
+          if (data && data.email) {
+            console.log('Found email from Auth0 directly:', data.email);
+            setDirectEmail(data.email);
+          } else {
+            console.log('No email found in direct Auth0 session');
+            // TEMPORARY: Use hardcoded email as last resort to show cards while debugging
+          }
+        })
+        .catch(err => {
+          console.error('Error checking Auth0 session directly:', err);
+          // TEMPORARY: Use hardcoded email as last resort if Auth0 check fails
+        });
+    }
+  }, [isValidEmail, userEmail]);
+
+  // Use the email from props or from direct Auth0 check
+  const emailToUse = isValidEmail ? userEmail : directEmail;
+  
+  useEffect(() => {
+    console.log('CardsList useEffect triggered with email to use:', emailToUse);
+    
+    if (!emailToUse) {
+      console.log('No valid email available');
+      setError('No email provided. Please ensure you are logged in properly.');
+      setIsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    
     const fetchUserCards = async () => {
       try {
-        const response = await fetch(`/api/cards?email=${encodeURIComponent(userEmail)}`);
+        setIsLoading(true);
+        setError(null);
+        setIsPlaceholderAccount(false);
+        console.log('Starting to fetch cards for email:', emailToUse);
+        const response = await fetch(`/api/cards?email=${encodeURIComponent(emailToUse)}`);
+        console.log('API Response status:', response.status);
+        
+        if (!isMounted) return;
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch cards');
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Failed to fetch cards: ${response.status} ${response.statusText}`);
         }
+        
         const user = await response.json();
-        if (user && user.credit_cards) {
-          const formattedCards = user.credit_cards.map((card: CreditCard) => ({
-            id: `card-${Date.now()}-${Math.random()}`,
-            type: "credit",
-            name: card.name,
-            last4: card.last4,
-            expires: card.expiry,
-            issuer: card.card_type,
-          }));
-          setCards(formattedCards);
+        console.log('Full API Response data:', user);
+        
+        if (!isMounted) return;
+        
+        if (user && user.credit_cards && Array.isArray(user.credit_cards)) {
+          console.log('Found credit_cards array:', user.credit_cards);
+          
+          // Check if this is a new user with empty cards array
+          if (user.credit_cards.length === 0) {
+            console.log('New user with no cards detected');
+            setIsPlaceholderAccount(true);
+            setCards([]);
+            setError('Welcome! You don\'t have any cards yet. Click below to add your first card.');
+          } else {
+            // User has cards
+            const formattedCards = user.credit_cards.map((card: CreditCard) => ({
+              id: `card-${Date.now()}-${Math.random()}`,
+              type: "credit",
+              name: card.name,
+              last4: card.last4,
+              expires: card.expiry,
+              issuer: card.card_type,
+            }));
+            
+            console.log('Formatted cards:', formattedCards);
+            
+            if (isMounted) {
+              setCards(formattedCards);
+            }
+          }
+        } else {
+          console.log('No valid credit_cards array found in user data:', user);
+          if (isMounted) {
+            setCards([]);
+          }
         }
       } catch (error) {
-        console.error('Error fetching user cards:', error);
+        console.error('Error in fetchUserCards:', error);
+        if (isMounted) {
+          setError(error instanceof Error ? error.message : 'Failed to fetch cards');
+          setIsPlaceholderAccount(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    if (userEmail) {
+    // Only fetch if we have a valid email
+    if (emailToUse) {
       fetchUserCards();
     }
-  }, [userEmail]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [emailToUse]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -112,6 +209,12 @@ export function CardsList({ userEmail }: { userEmail: string }) {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailForSubmit = emailToUse;
+    if (!emailForSubmit) {
+      console.error('Cannot add card without valid email');
+      return;
+    }
+    
     // Extract only the last 4 digits from the card number
     const last4 = formData.cardNumber.slice(-4);
     
@@ -141,7 +244,7 @@ export function CardsList({ userEmail }: { userEmail: string }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: userEmail,
+          email: emailForSubmit,
           creditCards: [...cards.map(card => ({
             last4: card.last4,
             expiry: card.expires,
@@ -177,259 +280,337 @@ export function CardsList({ userEmail }: { userEmail: string }) {
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
-  return (
-    <div className="space-y-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Your Cards</h2>
-        <span className="text-gray-500">Manage your connected payment cards</span>
-      </div>
-      
-      <div className="relative rounded-xl overflow-hidden">
-        {/* Scrollable cards container */}
-        <div className="flex flex-col space-y-4">
-          {cards.map((card) => (
-            <div 
-              key={card.id} 
-              className="flex overflow-hidden rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md"
-            >
-              {/* Colored bar on the left, similar to Netflix UI */}
-              <div className="w-2 bg-blue-600"></div>
-              
-              <div className="flex items-center p-4 w-full bg-white">
-                <div className="flex-shrink-0 mr-6">
-                  <div className={`h-12 w-12 rounded-full flex items-center justify-center ${getIssuerBgClass(card.issuer)}`}>
-                    <span className="text-white text-xs font-bold">{getIssuerInitials(card.issuer)}</span>
-                  </div>
-                </div>
-                
-                <div className="flex-grow flex flex-col">
-                  <div className="flex items-baseline">
-                    <h3 className="text-lg font-medium text-gray-900">{card.name}</h3>
-                    <span className="ml-2 text-sm text-gray-500">•••• {card.last4}</span>
-                  </div>
-                  <div className="flex items-center mt-1">
-                    <span className="text-sm text-gray-500">{card.issuer}</span>
-                    <span className="mx-2 text-gray-300">•</span>
-                    <span className="text-sm text-gray-500">{getCardTypeLabel(card.type)}</span>
-                    <span className="mx-2 text-gray-300">•</span>
-                    <span className="text-sm text-gray-500">Expires {card.expires}</span>
-                  </div>
-                </div>
-                
-                <div className="flex-shrink-0">
-                  <div className="text-gray-400 hover:text-gray-500">
-                    <CardIcon className="h-5 w-5" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-          
+  if (!emailToUse) {
+    return (
+      <div className="space-y-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="text-center py-8">
+          <p className="text-gray-600">Waiting for user authentication...</p>
           <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center p-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
           >
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                <PlusIcon className="h-5 w-5" />
-              </div>
-              <span className="font-medium">Connect a New Card</span>
-            </div>
+            Refresh Page
           </button>
         </div>
       </div>
-      
-      {/* Modal Overlay */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setIsModalOpen(false)}>
-          {/* Modal Content */}
-          <div 
-            className="bg-white rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-2xl transform transition-all"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="bg-[#0a192f] text-white p-4 flex justify-between items-center">
-              <h3 className="text-xl font-semibold">Connect a New Card</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-white hover:text-gray-200">
-                <XIcon />
-              </button>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="text-center py-8">
+          <p className="text-gray-600">Loading your cards...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="text-center py-8">
+          {isPlaceholderAccount ? (
+            // Show an informational message for placeholder accounts
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-blue-800">{error}</p>
             </div>
+          ) : (
+            // Show an error message for actual errors
+            <p className="text-red-600">Error: {error}</p>
+          )}
+        </div>
+        
+        {/* Continue showing the cards section if it's a placeholder account */}
+        {isPlaceholderAccount && renderCardsList()}
+      </div>
+    );
+  }
+
+  return renderCardsList();
+
+  // Helper function to render the cards list UI
+  function renderCardsList() {
+    const hasCards = cards.length > 0;
+    
+    return (
+      <div className="space-y-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Your Cards</h2>
+          <span className="text-gray-500">Manage your connected payment cards</span>
+        </div>
+        
+        <div className="relative rounded-xl overflow-hidden">
+          {/* Scrollable cards container */}
+          <div className="flex flex-col space-y-4">
+            {/* If user has cards, display them */}
+            {hasCards ? (
+              <>
+                {cards.map((card) => (
+                  <div 
+                    key={card.id} 
+                    className="flex overflow-hidden rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md"
+                  >
+                    {/* Colored bar on the left, similar to Netflix UI */}
+                    <div className="w-2 bg-blue-600"></div>
+                    
+                    <div className="flex items-center p-4 w-full bg-white">
+                      <div className="flex-shrink-0 mr-6">
+                        <div className={`h-12 w-12 rounded-full flex items-center justify-center ${getIssuerBgClass(card.issuer)}`}>
+                          <span className="text-white text-xs font-bold">{getIssuerInitials(card.issuer)}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex-grow flex flex-col">
+                        <div className="flex items-baseline">
+                          <h3 className="text-lg font-medium text-gray-900">{card.name}</h3>
+                          <span className="ml-2 text-sm text-gray-500">•••• {card.last4}</span>
+                        </div>
+                        <div className="flex items-center mt-1">
+                          <span className="text-sm text-gray-500">{card.issuer}</span>
+                          <span className="mx-2 text-gray-300">•</span>
+                          <span className="text-sm text-gray-500">{getCardTypeLabel(card.type)}</span>
+                          <span className="mx-2 text-gray-300">•</span>
+                          <span className="text-sm text-gray-500">Expires {card.expires}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex-shrink-0">
+                        <div className="text-gray-400 hover:text-gray-500">
+                          <CardIcon className="h-5 w-5" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              // Larger, more inviting button for first card
+              <div className="text-center py-8">
+                <div className="mb-6">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-16 w-16 mx-auto text-gray-300" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <rect width="20" height="14" x="2" y="5" rx="2" strokeWidth="1.5" />
+                    <line x1="2" x2="22" y1="10" y2="10" strokeWidth="1.5" />
+                  </svg>
+                </div>
+                {/* No cards message */}
+                <p className="text-gray-500 mb-6">You haven't added any payment cards yet.</p>
+              </div>
+            )}
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Card Name
-                </label>
-                <input
-                  type="text"
-                  name="cardName"
-                  value={formData.cardName}
-                  onChange={handleInputChange}
-                  placeholder="e.g. 'Sapphire Reserve'"
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">Enter the name of your card (e.g. "Sapphire Reserve")</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Card Number
-                </label>
-                <input
-                  type="text"
-                  name="cardNumber"
-                  value={formData.cardNumber}
-                  onChange={handleInputChange}
-                  placeholder="•••• •••• •••• ••••"
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  maxLength={19}
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Card Issuer
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="issuer"
-                      value={formData.issuer}
-                      onChange={handleInputChange}
-                      className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      required
-                    >
-                      <option value="Chase">Chase</option>
-                      <option value="American Express">American Express</option>
-                      <option value="Citi">Citi</option>
-                      <option value="Capital One">Capital One</option>
-                      <option value="Discover">Discover</option>
-                      <option value="TD">TD</option>
-                      <option value="BMO">BMO</option>
-                      <option value="RBC">RBC</option>
-                      <option value="Scotiabank">Scotiabank</option>
-                      <option value="CIBC">CIBC</option>
-                      <option value="Mastercard">Mastercard</option>
-                      <option value="Visa">Visa</option>
-                      <option value="Tangerine">Tangerine</option>
-                      <option value="HSBC">HSBC</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                      <ChevronDownIcon />
-                    </div>
-                  </div>
+            {/* Add card button */}
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className={`flex items-center p-4 rounded-xl border-2 border-dashed ${hasCards ? 'border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700' : 'border-blue-300 text-blue-500 hover:border-blue-400 hover:text-blue-700'} hover:bg-gray-50 transition-colors`}
+            >
+              <div className="flex items-center gap-4 mx-auto">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${hasCards ? 'bg-gray-100' : 'bg-blue-100'}`}>
+                  <PlusIcon className={`h-5 w-5 ${hasCards ? 'text-gray-600' : 'text-blue-600'}`} />
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Card Type
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="type"
-                      value={formData.type}
-                      onChange={handleInputChange}
-                      className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      required
-                    >
-                      <option value="credit">Credit</option>
-                      <option value="debit">Debit</option>
-                      <option value="prepaid">Prepaid</option>
-                      <option value="rewards">Rewards</option>
-                      <option value="business">Business</option>
-                      <option value="secured">Secured</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                      <ChevronDownIcon />
-                    </div>
-                  </div>
-                </div>
+                <span className="font-medium">{hasCards ? 'Connect a New Card' : 'Add Your First Card'}</span>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Expiry Month
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="expiryMonth"
-                      value={formData.expiryMonth}
-                      onChange={handleInputChange}
-                      className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      required
-                    >
-                      <option value="">Month</option>
-                      {Array.from({ length: 12 }, (_, i) => {
-                        const month = i + 1;
-                        return (
-                          <option key={month} value={month.toString().padStart(2, '0')}>
-                            {month.toString().padStart(2, '0')}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                      <ChevronDownIcon />
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Expiry Year
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="expiryYear"
-                      value={formData.expiryYear}
-                      onChange={handleInputChange}
-                      className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      required
-                    >
-                      <option value="">Year</option>
-                      {yearOptions.map(year => (
-                        <option key={year} value={year.toString().slice(-2)}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                      <ChevronDownIcon />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mt-2">
-                <p className="text-xs text-amber-800">
-                  <span className="font-medium">Security Note:</span> For security reasons, we only store the last 4 digits of your card number. You'll need to enter the full number when making purchases.
-                </p>
-              </div>
-              
-              <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0a192f] text-white rounded-md hover:bg-[#162944] transition-colors"
-                >
-                  Connect Card
-                </button>
-              </div>
-            </form>
+            </button>
           </div>
         </div>
-      )}
-    </div>
-  )
+        
+        {/* Modal Overlay */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setIsModalOpen(false)}>
+            {/* Modal Content */}
+            <div 
+              className="bg-white rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-2xl transform transition-all"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="bg-[#0a192f] text-white p-4 flex justify-between items-center">
+                <h3 className="text-xl font-semibold">Connect a New Card</h3>
+                <button onClick={() => setIsModalOpen(false)} className="text-white hover:text-gray-200">
+                  <XIcon />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Card Name
+                  </label>
+                  <input
+                    type="text"
+                    name="cardName"
+                    value={formData.cardName}
+                    onChange={handleInputChange}
+                    placeholder="e.g. 'Sapphire Reserve'"
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Enter the name of your card (e.g. "Sapphire Reserve")</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Card Number
+                  </label>
+                  <input
+                    type="text"
+                    name="cardNumber"
+                    value={formData.cardNumber}
+                    onChange={handleInputChange}
+                    placeholder="•••• •••• •••• ••••"
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    maxLength={19}
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Card Issuer
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="issuer"
+                        value={formData.issuer}
+                        onChange={handleInputChange}
+                        className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        required
+                      >
+                        <option value="Chase">Chase</option>
+                        <option value="American Express">American Express</option>
+                        <option value="Citi">Citi</option>
+                        <option value="Capital One">Capital One</option>
+                        <option value="Discover">Discover</option>
+                        <option value="TD">TD</option>
+                        <option value="BMO">BMO</option>
+                        <option value="RBC">RBC</option>
+                        <option value="Scotiabank">Scotiabank</option>
+                        <option value="CIBC">CIBC</option>
+                        <option value="Mastercard">Mastercard</option>
+                        <option value="Visa">Visa</option>
+                        <option value="Tangerine">Tangerine</option>
+                        <option value="HSBC">HSBC</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <ChevronDownIcon />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Card Type
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="type"
+                        value={formData.type}
+                        onChange={handleInputChange}
+                        className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        required
+                      >
+                        <option value="credit">Credit</option>
+                        <option value="debit">Debit</option>
+                        <option value="prepaid">Prepaid</option>
+                        <option value="rewards">Rewards</option>
+                        <option value="business">Business</option>
+                        <option value="secured">Secured</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <ChevronDownIcon />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expiry Month
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="expiryMonth"
+                        value={formData.expiryMonth}
+                        onChange={handleInputChange}
+                        className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        required
+                      >
+                        <option value="">Month</option>
+                        {Array.from({ length: 12 }, (_, i) => {
+                          const month = i + 1;
+                          return (
+                            <option key={month} value={month.toString().padStart(2, '0')}>
+                              {month.toString().padStart(2, '0')}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <ChevronDownIcon />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expiry Year
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="expiryYear"
+                        value={formData.expiryYear}
+                        onChange={handleInputChange}
+                        className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        required
+                      >
+                        <option value="">Year</option>
+                        {yearOptions.map(year => (
+                          <option key={year} value={year.toString().slice(-2)}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <ChevronDownIcon />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mt-2">
+                  <p className="text-xs text-amber-800">
+                    <span className="font-medium">Security Note:</span> For security reasons, we only store the last 4 digits of your card number. You'll need to enter the full number when making purchases.
+                  </p>
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#0a192f] text-white rounded-md hover:bg-[#162944] transition-colors"
+                  >
+                    Connect Card
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 }
 
 function CardIcon(props: React.SVGProps<SVGSVGElement>) {
