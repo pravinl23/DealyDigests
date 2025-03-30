@@ -61,17 +61,14 @@ export function CardDisplay({ card }: CardDisplayProps) {
   )
 }
 
-export function CardsList({ userEmail }: { userEmail: string }) {
-  // Validate userEmail is a proper string
-  const isValidEmail = typeof userEmail === 'string' && userEmail.trim() !== '';
-  
-  console.log('CardsList rendered with userEmail:', userEmail, 'isValid:', isValidEmail);
+export function CardsList() {
+  console.log('CardsList rendered');
   
   const [cards, setCards] = useState<CardDisplayProps['card'][]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [directEmail, setDirectEmail] = useState<string | null>(null);
+  const [isPlaceholderAccount, setIsPlaceholderAccount] = useState(false);
   const [formData, setFormData] = useState<CardFormData>({
     cardName: "",
     cardNumber: "",
@@ -81,46 +78,8 @@ export function CardsList({ userEmail }: { userEmail: string }) {
     type: "credit"
   });
 
-  // Placeholder account detection
-  const [isPlaceholderAccount, setIsPlaceholderAccount] = useState(false);
-
-  // If userEmail is not provided, try to get it directly from Auth0
+  // Fetch cards when component mounts
   useEffect(() => {
-    if (!isValidEmail) {
-      console.log('Attempting direct Auth0 session check...');
-      // Try to get the email directly from Auth0's session endpoint
-      fetch('/api/auth/me')
-        .then(response => response.json())
-        .then(data => {
-          console.log('Direct Auth0 session response:', data);
-          if (data && data.email) {
-            console.log('Found email from Auth0 directly:', data.email);
-            setDirectEmail(data.email);
-          } else {
-            console.log('No email found in direct Auth0 session');
-            // TEMPORARY: Use hardcoded email as last resort to show cards while debugging
-          }
-        })
-        .catch(err => {
-          console.error('Error checking Auth0 session directly:', err);
-          // TEMPORARY: Use hardcoded email as last resort if Auth0 check fails
-        });
-    }
-  }, [isValidEmail, userEmail]);
-
-  // Use the email from props or from direct Auth0 check
-  const emailToUse = isValidEmail ? userEmail : directEmail;
-  
-  useEffect(() => {
-    console.log('CardsList useEffect triggered with email to use:', emailToUse);
-    
-    if (!emailToUse) {
-      console.log('No valid email available');
-      setError('No email provided. Please ensure you are logged in properly.');
-      setIsLoading(false);
-      return;
-    }
-
     let isMounted = true;
     
     const fetchUserCards = async () => {
@@ -128,8 +87,10 @@ export function CardsList({ userEmail }: { userEmail: string }) {
         setIsLoading(true);
         setError(null);
         setIsPlaceholderAccount(false);
-        console.log('Starting to fetch cards for email:', emailToUse);
-        const response = await fetch(`/api/cards?email=${encodeURIComponent(emailToUse)}`);
+        console.log('Starting to fetch cards');
+        
+        // Now the API handles authentication through the Auth0 session
+        const response = await fetch('/api/cards');
         console.log('API Response status:', response.status);
         
         if (!isMounted) return;
@@ -189,15 +150,12 @@ export function CardsList({ userEmail }: { userEmail: string }) {
       }
     };
 
-    // Only fetch if we have a valid email
-    if (emailToUse) {
-      fetchUserCards();
-    }
+    fetchUserCards();
     
     return () => {
       isMounted = false;
     };
-  }, [emailToUse]);
+  }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -209,11 +167,6 @@ export function CardsList({ userEmail }: { userEmail: string }) {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emailForSubmit = emailToUse;
-    if (!emailForSubmit) {
-      console.error('Cannot add card without valid email');
-      return;
-    }
     
     // Extract only the last 4 digits from the card number
     const last4 = formData.cardNumber.slice(-4);
@@ -244,7 +197,6 @@ export function CardsList({ userEmail }: { userEmail: string }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: emailForSubmit,
           creditCards: [...cards.map(card => ({
             last4: card.last4,
             expiry: card.expires,
@@ -279,22 +231,6 @@ export function CardsList({ userEmail }: { userEmail: string }) {
   // Generate year options (current year + 10 years)
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
-
-  if (!emailToUse) {
-    return (
-      <div className="space-y-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="text-center py-8">
-          <p className="text-gray-600">Waiting for user authentication...</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
