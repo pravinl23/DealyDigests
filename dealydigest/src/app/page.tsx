@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useUser } from "@auth0/nextjs-auth0/client";
+import KnotLink from "@/components/knot-link";
 
 export default function Home() {
   const { user, error, isLoading } = useUser();
@@ -23,7 +24,10 @@ export default function Home() {
           <p className="mb-4 text-xl font-medium">
             Welcome back, {user.name || user.email}!
           </p>
-          <div className="flex gap-4">
+
+          <KnotLink />
+
+          <div className="flex gap-4 mt-4">
             <Link
               href="/dashboard"
               className="rounded-lg bg-primary px-6 py-2 text-white hover:bg-primary-dark"
