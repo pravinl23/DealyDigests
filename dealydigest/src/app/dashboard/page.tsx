@@ -41,6 +41,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
+import { CardsList } from "@/components/card-display";
 
 // Types for Knot SDK
 type Product = "card_switcher" | "transaction_link";
@@ -2619,54 +2620,9 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Your Cards</h2>
-                <button
-                  onClick={fetchUserCards}
-                  className="text-blue-500 text-sm hover:underline"
-                >
-                  Refresh
-                </button>
               </div>
-              <div className="border border-gray-200 rounded-lg p-6 min-h-[200px]">
-                {cardsLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-                  </div>
-                ) : cardsError ? (
-                  <div className="flex items-center justify-center h-full text-red-500">
-                    {cardsError}
-                  </div>
-                ) : userCards.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <p>No cards found</p>
-                    <p className="text-sm mt-2">
-                      Connect with Knot to add your cards
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {userCards.map((card, index) => (
-                      <div
-                        key={index}
-                        className="border border-gray-200 rounded-lg p-4"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">
-                              {card.name || "Credit Card"}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              •••• {card.last4 || "****"}
-                              {card.expiry && ` • Expires: ${card.expiry}`}
-                            </div>
-                          </div>
-                          <div className="text-sm font-medium">
-                            {card.card_type || "Card"}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="rounded-lg min-h-[200px]">
+                <CardsList />
               </div>
             </div>
 
