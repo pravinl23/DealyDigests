@@ -2,35 +2,34 @@
 
 import Link from "next/link";
 import { useUser } from "@auth0/nextjs-auth0/client";
-import KnotLink from "@/components/knot-link";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import AnimatedBackground from "@/components/animated-background";
+import { MapPin, CreditCard, Brain, TrendingUp, Sparkles } from "lucide-react";
 
 export default function Home() {
-  const { user, error, isLoading } = useUser();
+  const { user, isLoading } = useUser();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.3,
+        staggerChildren: 0.3,
+        delayChildren: 0.2,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { x: -20, opacity: 0 },
     visible: {
-      y: 0,
+      x: 0,
       opacity: 1,
       transition: {
         type: "spring",
@@ -42,163 +41,138 @@ export default function Home() {
 
   const buttonVariants = {
     initial: { scale: 1 },
-    hover: { 
+    hover: {
       scale: 1.05,
       boxShadow: "0 5px 15px rgba(0, 0, 0, 0.1)",
-      transition: { type: "spring", stiffness: 400, damping: 10 }
+      transition: { type: "spring", stiffness: 400, damping: 10 },
     },
-    tap: { scale: 0.95 }
+    tap: { scale: 0.95 },
   };
 
-  if (!mounted) {
-    return null;
-  }
+  const features = [
+    {
+      icon: <CreditCard className="h-6 w-6" />,
+      title: "Connect Your Cards",
+      description:
+        "Securely link your credit cards through Knot SDK to start tracking your spending patterns.",
+    },
+    {
+      icon: <Brain className="h-6 w-6" />,
+      title: "AI-Powered Insights",
+      description:
+        "Our AI analyzes your transactions to provide personalized financial insights and recommendations.",
+    },
+    {
+      icon: <MapPin className="h-6 w-6" />,
+      title: "Location-Based Deals",
+      description:
+        "Get real-time notifications about card benefits and deals at nearby merchants.",
+    },
+    {
+      icon: <TrendingUp className="h-6 w-6" />,
+      title: "Smart Recommendations",
+      description:
+        "Receive suggestions on which cards to use for maximum rewards at different merchants.",
+    },
+    {
+      icon: <Sparkles className="h-6 w-6" />,
+      title: "Automatic Updates",
+      description:
+        "Your card preferences are automatically updated based on your spending patterns and location.",
+    },
+  ];
+
+  if (!mounted) return null;
 
   return (
     <>
       <AnimatedBackground />
-      <motion.div
-        className="flex flex-col items-center justify-center py-12 relative z-10"
-        initial="hidden"
-        animate="visible"
-        variants={containerVariants}
-      >
-        <motion.h1 
-          className="mb-6 text-4xl font-bold text-primary"
-          variants={itemVariants}
+      <div className="min-h-screen flex flex-col items-center justify-center relative">
+        <motion.div
+          className="max-w-4xl mx-auto px-4 py-12 relative z-10"
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
         >
-          Welcome to DealyDigest
-        </motion.h1>
-        
-        <motion.p 
-          className="mb-10 max-w-2xl text-center text-lg text-gray-600"
-          variants={itemVariants}
-        >
-          Your personalized platform for discovering the best deals tailored to
-          your preferences and spending habits.
-        </motion.p>
-
-        {isLoading ? (
-          <motion.div 
-            className="flex items-center justify-center"
-            variants={itemVariants}
-          >
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-          </motion.div>
-        ) : user ? (
-          <motion.div 
-            className="flex flex-col items-center"
-            variants={itemVariants}
-          >
-            <motion.p 
-              className="mb-4 text-xl font-medium"
-              variants={itemVariants}
+          {/* Hero Section */}
+          <motion.div className="text-center mb-16" variants={itemVariants}>
+            <motion.h1
+              className="text-5xl font-bold text-primary mb-6"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.2 }}
             >
-              Welcome back, {user.name || user.email}!
+              DealyDigest
+            </motion.h1>
+            <motion.p
+              className="text-xl text-gray-600 mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              Maximize your card rewards with AI-powered insights
             </motion.p>
+          </motion.div>
 
+          {/* Features Section */}
+          <motion.div
+            className="grid md:grid-cols-2 gap-8 mb-16"
+            variants={containerVariants}
+          >
+            {features.map((feature, index) => (
+              <motion.div
+                key={index}
+                className="flex items-start gap-4 p-6 rounded-xl bg-white/5 backdrop-blur-sm border border-gray-200/10"
+                variants={itemVariants}
+                initial="hidden"
+                animate="visible"
+                transition={{ delay: 0.2 * index }}
+                whileHover={{
+                  scale: 1.02,
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                }}
+              >
+                <div className="text-primary">{feature.icon}</div>
+                <div>
+                  <h3 className="font-semibold text-lg text-primary mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-600">{feature.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* CTA Button */}
+          <motion.div className="text-center" variants={itemVariants}>
             <motion.div
-              className="w-full"
-              variants={itemVariants}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.7 }}
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
+              className="inline-block"
             >
-              <KnotLink />
-            </motion.div>
-
-            <motion.div 
-              className="flex gap-4 mt-4"
-              variants={itemVariants}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9 }}
-            >
-              <motion.div
-                variants={buttonVariants}
-                whileHover="hover"
-                whileTap="tap"
-                className="btn-pulse"
+              <Link
+                href={user ? "/dashboard" : "/api/auth/login"}
+                className="bg-primary text-white px-8 py-4 rounded-lg text-lg font-medium hover:bg-primary-dark transition-colors duration-300 inline-flex items-center gap-2"
               >
-                <Link
-                  href="/dashboard"
-                  className="rounded-lg bg-primary px-6 py-2 text-white hover:bg-primary-dark transition-colors duration-300 inline-block"
-                >
-                  Go to Dashboard
-                </Link>
-              </motion.div>
-              
-              <motion.div
-                variants={buttonVariants}
-                whileHover="hover"
-                whileTap="tap"
-              >
-                <Link
-                  href="/deals"
-                  className="rounded-lg border border-primary px-6 py-2 text-primary hover:bg-gray-100 transition-colors duration-300 inline-block"
-                >
-                  View Deals
-                </Link>
-              </motion.div>
+                {isLoading ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                ) : (
+                  <>
+                    Get Started
+                    <motion.span
+                      animate={{ x: [0, 5, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5 }}
+                    >
+                      →
+                    </motion.span>
+                  </>
+                )}
+              </Link>
             </motion.div>
           </motion.div>
-        ) : (
-          <motion.div 
-            className="flex flex-col items-center"
-            variants={itemVariants}
-          >
-            <motion.p 
-              className="mb-4 text-xl font-medium"
-              variants={itemVariants}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              Sign up or log in to get started
-            </motion.p>
-            
-            <motion.div 
-              className="flex gap-4"
-              variants={itemVariants}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-            >
-              <motion.a
-                href="/api/auth/login?screen_hint=signup"
-                className="rounded-lg bg-primary px-6 py-2 text-white hover:bg-primary-dark transition-colors duration-300 btn-pulse"
-                variants={buttonVariants}
-                whileHover="hover"
-                whileTap="tap"
-              >
-                Sign Up
-              </motion.a>
-              
-              <motion.a
-                href="/api/auth/login"
-                className="rounded-lg border border-primary px-6 py-2 text-primary hover:bg-gray-100 transition-colors duration-300"
-                variants={buttonVariants}
-                whileHover="hover"
-                whileTap="tap"
-              >
-                Log In
-              </motion.a>
-            </motion.div>
-          </motion.div>
-        )}
-        
-        <motion.div 
-          className="absolute bottom-4 floating"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.7 }}
-          transition={{ delay: 1.5, duration: 1 }}
-        >
-          <div className="text-sm text-gray-400">Discover exclusive deals just for you</div>
         </motion.div>
-      </motion.div>
+      </div>
     </>
   );
 }
