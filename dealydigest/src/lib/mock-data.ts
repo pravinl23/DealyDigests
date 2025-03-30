@@ -103,6 +103,32 @@ export interface MerchandiseItem {
   relatedTo?: string[] // IDs of Netflix/Spotify content this merchandise is related to
 }
 
+// Add the retail related interfaces
+export interface RetailService {
+  id: string
+  name: string
+  logo: string
+  connected: boolean
+}
+
+export interface RetailPurchase {
+  id: string
+  userId: string
+  retailServiceId: string
+  items: RetailItem[]
+  purchaseDate: Date
+  total: number
+}
+
+export interface RetailItem {
+  id: string
+  name: string
+  category: string
+  price: number
+  purchaseDate: Date
+  quantity: number
+}
+
 // Mock data stores
 export const users: User[] = [
   {
@@ -675,6 +701,7 @@ export const spotifyHistory: SpotifyListenHistory[] = [
   }
 ];
 
+// Define the entertainment events first
 export const entertainmentEvents: EntertainmentEvent[] = [
   {
     id: "e1",
@@ -743,6 +770,52 @@ export const entertainmentEvents: EntertainmentEvent[] = [
   }
 ];
 
+// Define the additionalEvents array
+export const additionalEvents: EntertainmentEvent[] = [
+  {
+    id: "e6",
+    title: "Kate Bush: Before the Dawn - Live Concert Film",
+    type: "movie",
+    performers: ["Kate Bush"],
+    venue: "Angelika Film Center, New York",
+    date: new Date("2025-06-15"),
+    price: 20,
+    genres: ["Music", "Concert Film"],
+    imageUrl: "https://example.com/kate-bush-film.jpg",
+    description: "Experience Kate Bush's legendary 'Before the Dawn' concert series on the big screen with enhanced audio.",
+    relatedTo: ["s5"] // Related to Running Up That Hill listen history
+  },
+  {
+    id: "e7",
+    title: "My Chemical Romance Pop-Up Shop & Museum",
+    type: "show",
+    performers: ["Exhibit"],
+    venue: "SoHo, New York",
+    date: new Date("2025-05-15"),
+    price: 15,
+    genres: ["Music", "Exhibition"],
+    imageUrl: "https://example.com/mcr-museum.jpg",
+    description: "A limited-time exhibition featuring rare memorabilia, costumes, and interactive installations from My Chemical Romance's history.",
+    relatedTo: ["s2"] // Related to Black Parade listen history
+  },
+  {
+    id: "e8",
+    title: "Sci-Fi TV Fest: Stranger Things Panel",
+    type: "show",
+    performers: ["Cast of Stranger Things"],
+    venue: "Javits Center, New York",
+    date: new Date("2025-07-01"),
+    price: 45,
+    genres: ["Television", "Sci-Fi", "Panel"],
+    imageUrl: "https://example.com/stranger-things-panel.jpg",
+    description: "Meet the cast of Stranger Things in this exclusive panel discussion with behind-the-scenes insights.",
+    relatedTo: ["n1"] // Related to Stranger Things watch history
+  }
+];
+
+// Add the additional events to the main events array
+additionalEvents.forEach(event => entertainmentEvents.push(event));
+
 export const merchandiseItems: MerchandiseItem[] = [
   {
     id: "m1",
@@ -788,6 +861,180 @@ export const merchandiseItems: MerchandiseItem[] = [
     price: 19.99,
     imageUrl: "https://example.com/lalaland-music.jpg",
     relatedTo: ["n5", "s4"] // Related to La La Land watch history and City of Stars
+  }
+];
+
+// Add to the existing data at the appropriate place
+export const retailServices: RetailService[] = [
+  {
+    id: "walmart",
+    name: "Walmart",
+    logo: "https://logo.clearbit.com/walmart.com",
+    connected: true
+  },
+  {
+    id: "instacart",
+    name: "Instacart",
+    logo: "https://logo.clearbit.com/instacart.com",
+    connected: true
+  },
+  {
+    id: "amazon",
+    name: "Amazon",
+    logo: "https://logo.clearbit.com/amazon.com",
+    connected: false
+  },
+  {
+    id: "target",
+    name: "Target",
+    logo: "https://logo.clearbit.com/target.com",
+    connected: false
+  }
+];
+
+export const retailPurchases: RetailPurchase[] = [
+  {
+    id: "rp1",
+    userId: "1",
+    retailServiceId: "walmart",
+    items: [
+      {
+        id: "ri1",
+        name: "Hamilton Original Cast Recording Vinyl",
+        category: "Music",
+        price: 29.99,
+        purchaseDate: new Date("2025-02-10"),
+        quantity: 1
+      },
+      {
+        id: "ri2",
+        name: "Queen Greatest Hits Collection",
+        category: "Music",
+        price: 15.99,
+        purchaseDate: new Date("2025-02-10"),
+        quantity: 1
+      },
+      {
+        id: "ri3",
+        name: "Stranger Things Season 4 Blu-ray",
+        category: "Movies",
+        price: 34.99,
+        purchaseDate: new Date("2025-02-10"),
+        quantity: 1
+      }
+    ],
+    purchaseDate: new Date("2025-02-10"),
+    total: 80.97
+  },
+  {
+    id: "rp2",
+    userId: "1",
+    retailServiceId: "instacart",
+    items: [
+      {
+        id: "ri4",
+        name: "Popcorn Family Size",
+        category: "Snacks",
+        price: 5.99,
+        purchaseDate: new Date("2025-02-15"),
+        quantity: 2
+      },
+      {
+        id: "ri5",
+        name: "Organic Microwave Popcorn",
+        category: "Snacks",
+        price: 4.49,
+        purchaseDate: new Date("2025-02-15"),
+        quantity: 3
+      },
+      {
+        id: "ri6",
+        name: "Movie Theater Butter Topping",
+        category: "Condiments",
+        price: 3.99,
+        purchaseDate: new Date("2025-02-15"),
+        quantity: 1
+      }
+    ],
+    purchaseDate: new Date("2025-02-15"),
+    total: 23.44
+  }
+];
+
+// Add new product recommendations based on retail and media history
+export interface ProductRecommendation {
+  id: string
+  title: string
+  category: string
+  price: number
+  imageUrl?: string
+  description: string
+  retailerId: string
+  retailerName: string
+  relevance: "media" | "retail" | "both"
+  relatedToItems?: string[] // IDs of retail items/media content this is related to
+}
+
+export const productRecommendations: ProductRecommendation[] = [
+  {
+    id: "pr1",
+    title: "Music Festival Survival Kit",
+    category: "Accessories",
+    price: 39.99,
+    imageUrl: "https://example.com/festival-kit.jpg",
+    description: "Everything you need for your next concert: portable charger, water bottle, earplugs, and more.",
+    retailerId: "amazon",
+    retailerName: "Amazon",
+    relevance: "both",
+    relatedToItems: ["s1", "s2", "ri1", "ri2"] // Related to music history and purchases
+  },
+  {
+    id: "pr2",
+    title: "Home Theater Popcorn Machine",
+    category: "Appliances",
+    price: 79.99,
+    imageUrl: "https://example.com/popcorn-machine.jpg",
+    description: "Bring the movie theater experience home with this retro-style popcorn maker.",
+    retailerId: "walmart",
+    retailerName: "Walmart",
+    relevance: "retail",
+    relatedToItems: ["ri4", "ri5", "ri6"] // Related to popcorn purchases
+  },
+  {
+    id: "pr3",
+    title: "Stranger Things Collector's Edition Box Set",
+    category: "Entertainment",
+    price: 129.99,
+    imageUrl: "https://example.com/stranger-things-box.jpg",
+    description: "Limited edition box set with all seasons, behind-the-scenes content, and exclusive merchandise.",
+    retailerId: "amazon",
+    retailerName: "Amazon",
+    relevance: "media",
+    relatedToItems: ["n1", "ri3"] // Related to Stranger Things
+  },
+  {
+    id: "pr4",
+    title: "Musical Theater Songbook Collection",
+    category: "Books",
+    price: 45.99,
+    imageUrl: "https://example.com/musical-songbook.jpg",
+    description: "Sheet music and lyrics from Broadway's biggest hits including Hamilton and more.",
+    retailerId: "target",
+    retailerName: "Target",
+    relevance: "media",
+    relatedToItems: ["n3", "s3"] // Related to Hamilton
+  },
+  {
+    id: "pr5",
+    title: "Premium Vinyl Record Player",
+    category: "Electronics",
+    price: 199.99,
+    imageUrl: "https://example.com/record-player.jpg",
+    description: "High-quality turntable with built-in speakers and Bluetooth connectivity.",
+    retailerId: "walmart",
+    retailerName: "Walmart",
+    relevance: "retail",
+    relatedToItems: ["ri1", "ri2"] // Related to vinyl purchases
   }
 ];
 
@@ -1085,11 +1332,11 @@ export const mockDb = {
     // If we don't have enough related events, add some random ones
     let recommendedEvents = [...relatedEvents];
     
-    if (recommendedEvents.length < 3) {
+    if (recommendedEvents.length < 4) {
       const randomEvents = entertainmentEvents
         .filter(event => !recommendedEvents.includes(event))
         .sort(() => 0.5 - Math.random())
-        .slice(0, 3 - recommendedEvents.length);
+        .slice(0, 4 - recommendedEvents.length);
       
       recommendedEvents = [...recommendedEvents, ...randomEvents];
     }
@@ -1130,6 +1377,72 @@ export const mockDb = {
     }
     
     return recommendedMerchandise;
+  },
+
+  // Add methods to the mockDb object for the new data types
+  getRetailServices: (userId: string) => {
+    return retailServices.map(service => {
+      // If connected, add purchase history
+      if (service.connected) {
+        const userPurchases = retailPurchases.filter(
+          purchase => purchase.userId === userId && purchase.retailServiceId === service.id
+        );
+        
+        return {
+          ...service,
+          purchaseHistory: {
+            items: userPurchases.flatMap(purchase => 
+              purchase.items.map(item => ({
+                name: item.name,
+                category: item.category,
+                purchaseDate: item.purchaseDate.toISOString()
+              }))
+            )
+          }
+        };
+      }
+      
+      return service;
+    });
+  },
+
+  connectRetailService: (userId: string, serviceId: string) => {
+    const serviceIndex = retailServices.findIndex(s => s.id === serviceId);
+    if (serviceIndex >= 0) {
+      retailServices[serviceIndex].connected = true;
+      return true;
+    }
+    return false;
+  },
+
+  disconnectRetailService: (userId: string, serviceId: string) => {
+    const serviceIndex = retailServices.findIndex(s => s.id === serviceId);
+    if (serviceIndex >= 0 && retailServices[serviceIndex].connected) {
+      retailServices[serviceIndex].connected = false;
+      return true;
+    }
+    return false;
+  },
+
+  getProductRecommendations: (userId: string, category?: string) => {
+    // In a real app, this would use algorithms to determine relevant products
+    // based on the user's media and retail purchase history
+    
+    let recommendations = productRecommendations;
+    
+    // Filter by category if provided
+    if (category) {
+      recommendations = recommendations.filter(product => 
+        product.category.toLowerCase() === category.toLowerCase()
+      );
+    }
+    
+    return recommendations;
+  },
+
+  // Add getEventRecommendations as an alias for getRecommendedEvents for consistency
+  getEventRecommendations: (userId: string) => {
+    return mockDb.getRecommendedEvents(userId);
   }
 }
 

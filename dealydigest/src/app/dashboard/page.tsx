@@ -3,11 +3,14 @@
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { InsightIcon, RecommendationIcon, Tabs } from "@/components/tabs";
+import { InsightIcon, RecommendationIcon, EntertainmentIcon, Tabs } from "@/components/tabs";
 import { SpendingChart } from "@/components/spending-chart";
 import { TransactionsList } from "@/components/transactions-list";
 import { CardsList } from "@/components/card-display";
 import Link from "next/link";
+import MediaHistorySection from "@/components/MediaHistorySection";
+import RecommendationsSection from "@/components/RecommendationsSection";
+import { MusicIcon } from "lucide-react";
 
 // Sample data for the dashboard
 const spendingData = [
@@ -130,6 +133,11 @@ export default function DashboardPage() {
       label: "Deals",
       icon: <RecommendationIcon className="h-4 w-4" />,
     },
+    {
+      id: "entertainment",
+      label: "Entertainment",
+      icon: <EntertainmentIcon className="h-4 w-4" />,
+    },
   ];
 
   return (
@@ -248,12 +256,51 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
+
+              {activeTab === "entertainment" && (
+                <div className="card p-6">
+                  <div className="space-y-8">
+                    <MediaHistorySection />
+                    <RecommendationsSection />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right column */}
             <div className="mt-8 w-full lg:mt-0 lg:w-96">
               <div className="card mb-8 p-6">
                 <CardsList cards={cards} />
+              </div>
+
+              <div className="card p-6">
+                <h2 className="mb-6 text-xl font-medium">Monthly Summary</h2>
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Spent:</span>
+                    <span className="font-medium">
+                      ${monthlySummary.totalSpent.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Top Category:</span>
+                    <span className="font-medium">
+                      {monthlySummary.topCategory}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Most Used Card:</span>
+                    <span className="font-medium">
+                      {monthlySummary.mostUsedCard}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Potential Savings:</span>
+                    <span className="font-bold text-green-600">
+                      ${monthlySummary.potentialSavings.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
