@@ -1,5 +1,6 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
+import { getUserByEmail, updateUserCreditCards, CreditCard } from "@/lib/mongodb"
 
 interface CardDisplayProps {
   card: {
@@ -15,7 +16,7 @@ interface CardDisplayProps {
 
 interface CardFormData {
   cardName: string;
-  cardNumber: string; // We'll only store the last 4 digits
+  cardNumber: string;
   expiryMonth: string;
   expiryYear: string;
   issuer: string;
@@ -60,30 +61,8 @@ export function CardDisplay({ card }: CardDisplayProps) {
   )
 }
 
-export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['card'][] }) {
-  // Add default cards if none are provided
-  const defaultCards = [
-    {
-      id: "card-1",
-      type: "credit",
-      name: "Sapphire Reserve",
-      last4: "4567",
-      expires: "03/27",
-      issuer: "Chase",
-    },
-    {
-      id: "card-2",
-      type: "credit",
-      name: "Freedom Unlimited",
-      last4: "8901",
-      expires: "05/26",
-      issuer: "Chase",
-    }
-  ];
-
-  const [cards, setCards] = useState<CardDisplayProps['card'][]>(
-    initialCards.length > 0 ? initialCards : defaultCards
-  );
+export function CardsList({ userEmail }: { userEmail: string }) {
+  const [cards, setCards] = useState<CardDisplayProps['card'][]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState<CardFormData>({
     cardName: "",
@@ -93,6 +72,35 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
     issuer: "Chase",
     type: "credit"
   });
+
+  useEffect(() => {
+    const fetchUserCards = async () => {
+      try {
+        const response = await fetch(`/api/cards?email=${encodeURIComponent(userEmail)}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch cards');
+        }
+        const user = await response.json();
+        if (user && user.credit_cards) {
+          const formattedCards = user.credit_cards.map((card: CreditCard) => ({
+            id: `card-${Date.now()}-${Math.random()}`,
+            type: "credit",
+            name: card.name,
+            last4: card.last4,
+            expires: card.expiry,
+            issuer: card.card_type,
+          }));
+          setCards(formattedCards);
+        }
+      } catch (error) {
+        console.error('Error fetching user cards:', error);
+      }
+    };
+
+    if (userEmail) {
+      fetchUserCards();
+    }
+  }, [userEmail]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -102,34 +110,67 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
     }));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Extract only the last 4 digits from the card number
     const last4 = formData.cardNumber.slice(-4);
     
     // Create a new card object
     const newCard: CardDisplayProps['card'] = {
-      id: `card-${Date.now()}`, // Generate a unique ID
+      id: `card-${Date.now()}`,
       name: formData.cardName,
       last4: last4,
       type: formData.type,
       issuer: formData.issuer,
       expires: `${formData.expiryMonth}/${formData.expiryYear}`,
     };
+
+    // Create the MongoDB credit card object
+    const mongoCard: CreditCard = {
+      last4: last4,
+      expiry: `${formData.expiryMonth}/${formData.expiryYear}`,
+      card_type: formData.issuer,
+      name: formData.cardName
+    };
     
-    // Add the new card to the list
-    setCards(prevCards => [...prevCards, newCard]);
-    
-    // Close the modal and reset form
-    setIsModalOpen(false);
-    setFormData({
-      cardName: "",
-      cardNumber: "",
-      expiryMonth: "",
-      expiryYear: "",
-      issuer: "Chase",
-      type: "credit"
-    });
+    try {
+      // Update the database through the API
+      const response = await fetch('/api/cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          creditCards: [...cards.map(card => ({
+            last4: card.last4,
+            expiry: card.expires,
+            card_type: card.issuer,
+            name: card.name
+          })), mongoCard]
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update cards');
+      }
+
+      // Update the local state
+      setCards(prevCards => [...prevCards, newCard]);
+      
+      // Close the modal and reset form
+      setIsModalOpen(false);
+      setFormData({
+        cardName: "",
+        cardNumber: "",
+        expiryMonth: "",
+        expiryYear: "",
+        issuer: "Chase",
+        type: "credit"
+      });
+    } catch (error) {
+      console.error('Error updating cards:', error);
+    }
   };
   
   // Generate year options (current year + 10 years)
