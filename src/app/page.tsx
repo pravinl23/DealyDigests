@@ -7,6 +7,10 @@ import { useEffect, useState } from "react";
 import AnimatedBackground from "@/components/animated-background";
 import { MapPin, CreditCard, Brain, TrendingUp, Sparkles } from "lucide-react";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export default function Home() {
   const { user, isLoading } = useUser();
   const [mounted, setMounted] = useState(false);
