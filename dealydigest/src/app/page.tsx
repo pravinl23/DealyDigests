@@ -7,6 +7,10 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import AnimatedBackground from "@/components/animated-background";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export default function Home() {
   const { user, error, isLoading } = useUser();
   const [mounted, setMounted] = useState(false);

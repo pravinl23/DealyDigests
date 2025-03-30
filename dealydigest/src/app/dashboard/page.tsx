@@ -2076,10 +2076,10 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Your Cards</h2>
-              </div>
+                  </div>
               <div className="rounded-lg min-h-[200px]">
                 <CardsList />
-              </div>
+                </div>
             </div>
 
             <div>
