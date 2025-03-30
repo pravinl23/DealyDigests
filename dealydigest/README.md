@@ -2,7 +2,24 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, set up your Auth0 application:
+
+1. Sign up for an Auth0 account at [https://auth0.com](https://auth0.com)
+2. Create a new application of type "Regular Web Application"
+3. In the settings, add the following URLs:
+   - Allowed Callback URLs: `http://localhost:3000/auth/callback`
+   - Allowed Logout URLs: `http://localhost:3000`
+4. Copy your Auth0 Domain, Client ID, and Client Secret
+5. Create a `.env.local` file in the root directory with the following content:
+   ```
+   AUTH0_DOMAIN=your-auth0-domain
+   AUTH0_CLIENT_ID=your-client-id
+   AUTH0_CLIENT_SECRET=your-client-secret
+   AUTH0_SECRET=a-long-random-string-generated-with-openssl-rand-hex-32
+   APP_BASE_URL=http://localhost:3000
+   ```
+
+Then, run the development server:
 
 ```bash
 npm run dev
@@ -16,7 +33,15 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Authentication Flow
+
+This application uses Auth0 for authentication. The authentication flow is:
+
+1. User clicks "Log In" button in the navbar
+2. User is redirected to Auth0's login page
+3. After successful authentication, user is redirected back to our application
+4. The navbar dynamically updates to show user information and authenticated routes
+5. Protected routes (like the dashboard) require authentication to access
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

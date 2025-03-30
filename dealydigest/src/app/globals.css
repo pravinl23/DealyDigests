@@ -137,33 +137,38 @@
   body {
     @apply bg-background text-foreground;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-medium;
   }
 }
 
 @layer components {
   .card {
-    @apply rounded-xl bg-white shadow-sm;
+    @apply rounded-lg border border-gray-200 bg-white shadow-sm;
   }
-  
+
   .card-blue {
     @apply rounded-xl bg-primary text-white shadow-sm;
   }
-  
+
   .btn {
     @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
-  
+
   .btn-primary {
     @apply bg-accent text-white hover:bg-indigo-500 focus:ring-accent;
   }
-  
+
   .btn-secondary {
     @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
   }
-  
+
   .btn-outline {
     @apply border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500;
   }
@@ -174,11 +179,19 @@
 }
 
 .bg-primary-light {
-  background-color: var(--primary-light);
+  background-color: rgba(10, 25, 47, 0.8);
+}
+
+.text-primary-dark {
+  color: var(--primary-dark);
+}
+
+.text-primary-dark:hover {
+  opacity: 0.8;
 }
 
 .text-success {
-  color: var(--success);
+  color: #10b981;
 }
 
 .bg-accent {
@@ -190,17 +203,20 @@
 }
 
 .chart-bar {
-  @apply relative rounded-t-sm transition-all duration-300 ease-in-out;
+  border-top-left-radius: 0.375rem;
+  border-top-right-radius: 0.375rem;
+  transition-property: all;
+  transition-duration: 300ms;
 }
 
 .chart-bar-travel {
-  @apply bg-blue-500;
+  background-color: #3b82f6;
 }
 
 .chart-bar-dining {
-  @apply bg-amber-500;
+  background-color: #f59e0b;
 }
 
 .chart-bar-shopping {
-  @apply bg-purple-500;
+  background-color: #a855f7;
 }
