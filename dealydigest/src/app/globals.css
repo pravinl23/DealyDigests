@@ -76,6 +76,24 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --primary: #0a192f;
+  --primary-light: #162944;
+  --primary-dark: #071527;
+  --accent: #4f46e5;
+  --accent-light: #6366f1;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
 }
 
 .dark {
@@ -119,4 +137,70 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl bg-white shadow-sm;
+  }
+  
+  .card-blue {
+    @apply rounded-xl bg-primary text-white shadow-sm;
+  }
+  
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-indigo-500 focus:ring-accent;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
+  }
+  
+  .btn-outline {
+    @apply border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500;
+  }
+}
+
+.bg-primary {
+  background-color: var(--primary);
+}
+
+.bg-primary-light {
+  background-color: var(--primary-light);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.bg-accent {
+  background-color: var(--accent);
+}
+
+.bg-accent-light {
+  background-color: var(--accent-light);
+}
+
+.chart-bar {
+  @apply relative rounded-t-sm transition-all duration-300 ease-in-out;
+}
+
+.chart-bar-travel {
+  @apply bg-blue-500;
+}
+
+.chart-bar-dining {
+  @apply bg-amber-500;
+}
+
+.chart-bar-shopping {
+  @apply bg-purple-500;
 }
