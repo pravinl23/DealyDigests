@@ -1,32 +1,54 @@
-import { MongoClient, MongoClientOptions } from 'mongodb';
+import { MongoClient, ServerApiVersion } from 'mongodb';
 
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your Mongo URI to .env.local');
+// Replace this with your MongoDB connection string
+const uri = process.env.MONGODB_URI || 'mongodb+srv://username:password@cluster0.example.mongodb.net/?retryWrites=true&w=majority';
+
+// MongoDB client
+let client: MongoClient;
+let clientPromise: Promise<MongoClient>;
+
+// In development mode, use a global variable to preserve the MongoDB connection
+// across hot-reloads
+if (process.env.NODE_ENV === 'development') {
+  let globalWithMongo = global as typeof globalThis & {
+    _mongoClientPromise?: Promise<MongoClient>;
+  };
+
+  if (!globalWithMongo._mongoClientPromise) {
+    client = new MongoClient(uri, {
+      serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+      }
+    });
+    globalWithMongo._mongoClientPromise = client.connect();
+  }
+  clientPromise = globalWithMongo._mongoClientPromise;
+} else {
+  // In production mode, it's best to create a new connection for each request
+  client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    }
+  });
+  clientPromise = client.connect();
 }
 
-const uri = process.env.MONGODB_URI;
-const options: MongoClientOptions = {
-  maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-};
+export { clientPromise };
 
-let client: MongoClient | null = null;
-let clientPromise: Promise<MongoClient> | null = null;
+// Helper function to get a database
+export async function getDatabase(dbName = 'dealydigest') {
+  const client = await clientPromise;
+  return client.db(dbName);
+}
 
-export async function connectToDatabase() {
-  if (clientPromise) {
-    return clientPromise;
-  }
-
-  try {
-    client = new MongoClient(uri, options);
-    clientPromise = client.connect();
-    return clientPromise;
-  } catch (error) {
-    console.error('Error connecting to MongoDB:', error);
-    throw error;
-  }
+// Helper function to get a collection
+export async function getCollection(collectionName: string, dbName = 'dealydigest') {
+  const db = await getDatabase(dbName);
+  return db.collection(collectionName);
 }
 
 export interface CreditCard {
@@ -60,7 +82,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   }
 
   try {
-    const client = await connectToDatabase();
+    const client = await clientPromise;
     const db = client.db();
     const user = await db.collection('swipe').findOne({ email });
     return user as User | null;
@@ -76,7 +98,7 @@ export async function updateUserCreditCards(email: string, creditCards: CreditCa
   }
 
   try {
-    const client = await connectToDatabase();
+    const client = await clientPromise;
     const db = client.db();
     const result = await db.collection('swipe').updateOne(
       { email },
@@ -87,7 +109,4 @@ export async function updateUserCreditCards(email: string, creditCards: CreditCa
     console.error('Error updating user credit cards:', error);
     return false;
   }
-}
-
-// Export a promise that resolves to the MongoDB client
-export default clientPromise; 
+} 

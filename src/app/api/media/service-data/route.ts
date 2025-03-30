@@ -1,101 +1,233 @@
 import { NextResponse } from "next/server";
-import { getUser } from "@/lib/utils";
-import { knotClient } from "@/lib/knot";
+import knotClient from "@/lib/knot";
+import { ServiceDataService, UserConnectionService } from "@/lib/db-service";
+import { ServiceDataDocument } from "@/models/ServiceData";
 
 export async function GET(request: Request) {
-  try {
-    // Get the authenticated user
-    const user = await getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  // Extract userId from the URL query parameters
+  const url = new URL(request.url);
+  const userId = url.searchParams.get("userId");
 
-    // Use the user's sub/id as userId
-    const userId = user.sub || user.id;
+  if (!userId) {
+    return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+  }
+
+  try {
+    // First try to get service data from MongoDB
+    let serviceData: ServiceDataDocument | null = await ServiceDataService.getServiceData(userId);
+    const processedServiceData: Record<string, any> = {};
     
-    // First, get the list of connected companies
-    const connectedCompaniesResponse = await knotClient.getConnectedCompanies(userId);
-    const connectedMerchants = connectedCompaniesResponse.connected_companies.map(
-      company => company.merchant.toLowerCase()
-    );
+    // If we have service data from MongoDB, extract it
+    if (serviceData) {
+      if (serviceData.spotify) processedServiceData.spotify = serviceData.spotify;
+      if (serviceData.netflix) processedServiceData.netflix = serviceData.netflix;
+      if (serviceData.doordash) processedServiceData.doordash = serviceData.doordash;
+      if (serviceData.uber) processedServiceData.uber = serviceData.uber;
+      if (serviceData.amazon) processedServiceData.amazon = serviceData.amazon;
+    } else {
+      console.log("No service data found in MongoDB, fetching from Knot API");
+    }
     
-    // For demo purposes, we're providing mock data ONLY for connected services
-    const url = new URL(request.url);
-    const service = url.searchParams.get("service");
+    // Get user's connections from our MongoDB database
+    let userConnections = await UserConnectionService.getUserConnections(userId);
     
-    let serviceData = {};
+    // If no connections in our database, try fetching from Knot API
+    if (!userConnections || userConnections.length === 0) {
+      console.log("No user connections found in MongoDB, fetching from Knot API");
+      const knotConnections = await knotClient.getUserConnections(userId);
+      
+      // Save Knot connections to our database for future use
+      if (knotConnections && knotConnections.length > 0) {
+        for (const conn of knotConnections) {
+          await UserConnectionService.addUserConnection(
+            userId,
+            conn.merchant || conn.merchantName,
+            conn.merchant_id || conn.merchantId || 0,
+            conn.connection_id || conn.connectionId || `knot-${Date.now()}`,
+            { source: 'knot-api' }
+          );
+        }
+        
+        // Fetch connections again from our database
+        userConnections = await UserConnectionService.getUserConnections(userId);
+      }
+    }
     
-    // Helper function to check if service is connected
-    const isServiceConnected = (serviceName: string) => {
-      return connectedMerchants.some(merchant => 
-        merchant.toLowerCase().includes(serviceName.toLowerCase())
-      );
+    // Map merchant names to service names for consistent comparison
+    const serviceNameMap: Record<string, string> = {
+      'spotify': 'spotify',
+      'netflix': 'netflix',
+      'doordash': 'doordash',
+      'amazon': 'amazon',
+      'uber eats': 'uber',
+      'uber': 'uber',
+      'walmart': 'walmart',
     };
     
-    // Only return data for connected services
-    if (service) {
-      // Requesting a specific service
-      switch(service.toLowerCase()) {
-        case "spotify":
-          serviceData = isServiceConnected("spotify") 
-            ? getSpotifyData(userId) 
-            : { error: "Spotify not connected", message: "Please connect your Spotify account" };
-          break;
-        case "netflix":
-          serviceData = isServiceConnected("netflix") 
-            ? getNetflixData(userId) 
-            : { error: "Netflix not connected", message: "Please connect your Netflix account" };
-          break;
-        case "doordash":
-          serviceData = isServiceConnected("doordash") 
-            ? getDoorDashData(userId) 
-            : { error: "DoorDash not connected", message: "Please connect your DoorDash account" };
-          break;
-        case "uber":
-          serviceData = isServiceConnected("uber") 
-            ? getUberData(userId) 
-            : { error: "Uber not connected", message: "Please connect your Uber account" };
-          break;
-        case "amazon":
-          serviceData = isServiceConnected("amazon") 
-            ? getAmazonData(userId) 
-            : { error: "Amazon not connected", message: "Please connect your Amazon account" };
-          break;
-        default:
-          serviceData = { error: "Unknown service", message: "The requested service is not supported" };
+    // Get connected merchants from user connections
+    const connectedMerchants = userConnections.map(connection => {
+      return (connection.merchantName || '').toLowerCase();
+    }).filter(Boolean);
+    
+    console.log(`Connected merchants:`, connectedMerchants);
+    
+    // Structure to return to client
+    const responseData: any = { 
+      serviceData: {} 
+    };
+    
+    // For demo purposes, always include sample data for streaming services
+    const alwaysIncludeServices = ['spotify', 'netflix'];
+    
+    // Process Spotify
+    const spotifyConnected = isServiceConnected('spotify', connectedMerchants, serviceNameMap) || 
+                          alwaysIncludeServices.includes('spotify');
+    console.log(`Spotify connected: ${spotifyConnected}`);
+    
+    if (spotifyConnected) {
+      // Try to get Spotify data from MongoDB first
+      if (processedServiceData.spotify) {
+        responseData.serviceData.spotify = processedServiceData.spotify;
+      } else {
+        // Fallback to fetching from Knot API
+        try {
+          const spotifyData = await knotClient.getSpotifyData(userId);
+          responseData.serviceData.spotify = spotifyData;
+          
+          // Store data in MongoDB for future use
+          await ServiceDataService.updateSpotifyData(userId, spotifyData);
+        } catch (error) {
+          console.error("Error fetching Spotify data:", error);
+          responseData.serviceData.spotify = { error: "Failed to fetch Spotify data" };
+        }
       }
-    } else {
-      // Return data for all services (connected or not)
-      serviceData = {
-        spotify: isServiceConnected("spotify") 
-          ? getSpotifyData(userId) 
-          : { error: "Spotify not connected", message: "Please connect your Spotify account" },
-        
-        netflix: isServiceConnected("netflix") 
-          ? getNetflixData(userId) 
-          : { error: "Netflix not connected", message: "Please connect your Netflix account" },
-        
-        doordash: isServiceConnected("doordash") 
-          ? getDoorDashData(userId) 
-          : { error: "DoorDash not connected", message: "Please connect your DoorDash account" },
-        
-        uber: isServiceConnected("uber") 
-          ? getUberData(userId) 
-          : { error: "Uber not connected", message: "Please connect your Uber account" },
-        
-        amazon: isServiceConnected("amazon") 
-          ? getAmazonData(userId) 
-          : { error: "Amazon not connected", message: "Please connect your Amazon account" }
-      };
     }
     
-    return NextResponse.json({
-      success: true,
-      service: service || "all",
-      data: serviceData,
-      connected_merchants: connectedMerchants
-    });
+    // Process Netflix
+    const netflixConnected = isServiceConnected('netflix', connectedMerchants, serviceNameMap) || 
+                          alwaysIncludeServices.includes('netflix');
+    console.log(`Netflix connected: ${netflixConnected}`);
+    
+    if (netflixConnected) {
+      // Try to get Netflix data from MongoDB first
+      if (processedServiceData.netflix) {
+        responseData.serviceData.netflix = processedServiceData.netflix;
+      } else {
+        // Fallback to fetching from Knot API
+        try {
+          const netflixData = await knotClient.getNetflixData(userId);
+          responseData.serviceData.netflix = netflixData;
+          
+          // Store data in MongoDB for future use
+          await ServiceDataService.updateNetflixData(userId, netflixData);
+        } catch (error) {
+          console.error("Error fetching Netflix data:", error);
+          responseData.serviceData.netflix = { error: "Failed to fetch Netflix data" };
+        }
+      }
+    }
+    
+    // Process DoorDash
+    const doordashConnected = isServiceConnected('doordash', connectedMerchants, serviceNameMap);
+    console.log(`DoorDash connected: ${doordashConnected}`);
+    
+    if (doordashConnected) {
+      // Try to get DoorDash data from MongoDB first
+      if (processedServiceData.doordash) {
+        responseData.serviceData.doordash = processedServiceData.doordash;
+      } else {
+        // Use mock data for now
+        const doordashData = {
+          recentOrders: [
+            { id: "dd-1", restaurant: "Chipotle", date: "2023-06-15", total: 15.99, items: ["Burrito Bowl", "Chips & Guac"] },
+            { id: "dd-2", restaurant: "Shake Shack", date: "2023-06-10", total: 22.50, items: ["ShackBurger", "Fries", "Shake"] },
+            { id: "dd-3", restaurant: "Sweetgreen", date: "2023-06-05", total: 14.25, items: ["Custom Salad", "Iced Tea"] }
+          ],
+          topRestaurants: ["Chipotle", "Shake Shack", "Sweetgreen", "Panera Bread"],
+          frequentItems: ["Burrito Bowl", "Salad", "Sandwich", "Fries"],
+          upcomingDeals: [
+            { id: "deal-1", restaurant: "Chipotle", discount: "20% off", expiryDate: "2023-07-15" },
+            { id: "deal-2", restaurant: "Panera Bread", discount: "Free delivery", expiryDate: "2023-07-10" }
+          ]
+        };
+        
+        responseData.serviceData.doordash = doordashData;
+        
+        // Store data in MongoDB for future use
+        await ServiceDataService.updateDoorDashData(userId, doordashData);
+      }
+    }
+    
+    // Process Uber
+    const uberConnected = isServiceConnected('uber', connectedMerchants, serviceNameMap);
+    console.log(`Uber connected: ${uberConnected}`);
+    
+    if (uberConnected) {
+      // Try to get Uber data from MongoDB first
+      if (processedServiceData.uber) {
+        responseData.serviceData.uber = processedServiceData.uber;
+      } else {
+        // Use mock data for now
+        const uberData = {
+          recentRides: [
+            { id: "uber-1", from: "Home", to: "Work", date: "2023-06-16", cost: 12.50, distance: "3.2 miles" },
+            { id: "uber-2", from: "Work", to: "Restaurant", date: "2023-06-14", cost: 8.75, distance: "1.8 miles" },
+            { id: "uber-3", from: "Restaurant", to: "Home", date: "2023-06-14", cost: 14.30, distance: "4.1 miles" }
+          ],
+          frequentDestinations: ["Work", "Home", "Gym", "Airport"],
+          upcomingReservations: [
+            { id: "res-1", from: "Home", to: "Airport", date: "2023-07-05", time: "08:30 AM" }
+          ],
+          availablePromotions: [
+            { id: "promo-1", code: "SUMMER23", discount: "25% off next ride", expiryDate: "2023-07-31" }
+          ]
+        };
+        
+        responseData.serviceData.uber = uberData;
+        
+        // Store data in MongoDB for future use
+        await ServiceDataService.updateUberData(userId, uberData);
+      }
+    }
+    
+    // Process Amazon
+    const amazonConnected = isServiceConnected('amazon', connectedMerchants, serviceNameMap);
+    console.log(`Amazon connected: ${amazonConnected}`);
+    
+    if (amazonConnected) {
+      // Try to get Amazon data from MongoDB first
+      if (processedServiceData.amazon) {
+        responseData.serviceData.amazon = processedServiceData.amazon;
+      } else {
+        // Use mock data for now
+        const amazonData = {
+          recentPurchases: [
+            { id: "amz-1", item: "Wireless Headphones", date: "2023-06-12", price: 79.99, status: "Delivered" },
+            { id: "amz-2", item: "Smart Home Hub", date: "2023-06-08", price: 129.99, status: "Shipped" },
+            { id: "amz-3", item: "Fitness Tracker", date: "2023-06-01", price: 49.99, status: "Delivered" }
+          ],
+          subscriptions: [
+            { id: "sub-1", name: "Amazon Prime", renewalDate: "2023-12-15", price: 14.99 },
+            { id: "sub-2", name: "Kindle Unlimited", renewalDate: "2023-07-20", price: 9.99 }
+          ],
+          recommendations: [
+            { id: "rec-1", item: "Bluetooth Speaker", price: 59.99, rating: 4.5 },
+            { id: "rec-2", item: "Laptop Stand", price: 29.99, rating: 4.3 },
+            { id: "rec-3", item: "Wireless Charger", price: 24.99, rating: 4.7 }
+          ],
+          upcomingDeliveries: [
+            { id: "del-1", item: "Smart Home Hub", estimatedDelivery: "2023-06-20" }
+          ]
+        };
+        
+        responseData.serviceData.amazon = amazonData;
+        
+        // Store data in MongoDB for future use
+        await ServiceDataService.updateAmazonData(userId, amazonData);
+      }
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error("Error fetching service data:", error);
     return NextResponse.json(
@@ -103,6 +235,36 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+// Helper function to check if a service is connected
+function isServiceConnected(
+  serviceName: string, 
+  connectedMerchants: string[], 
+  serviceNameMap: Record<string, string>
+): boolean {
+  // Direct match with service name
+  if (connectedMerchants.includes(serviceName.toLowerCase())) {
+    return true;
+  }
+  
+  // Check if any connected merchant maps to this service
+  for (const merchant of connectedMerchants) {
+    const normalizedMerchant = merchant.toLowerCase();
+    
+    // Check exact match in map
+    if (serviceNameMap[normalizedMerchant] === serviceName.toLowerCase()) {
+      return true;
+    }
+    
+    // Check partial match (legacy support)
+    if (normalizedMerchant.includes(serviceName.toLowerCase()) || 
+        serviceName.toLowerCase().includes(normalizedMerchant)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 // Mock data functions for each service - these are only returned when a service is connected

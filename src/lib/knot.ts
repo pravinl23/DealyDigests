@@ -382,7 +382,7 @@ export class KnotClient {
   }
 
   // Helper method to get user connections based on userId
-  private getUserConnections(userId: string) {
+  public getUserConnections(userId: string) {
     if (!userId) return [];
     
     // Generate a number from the userId for demo purposes
@@ -403,14 +403,18 @@ export class KnotClient {
       { name: "Uber Eats", id: 36 }
     ];
     
-    // If this is a new user, they have no connections
+    // If this is a new user, they have no connections unless they've been forced
     if (userNum === 'new-user') {
-      return [];
+      // Check for any forced connections in cache
+      const forcedConnections = this.getForcedConnectionsFromCache(userId);
+      return forcedConnections;
     }
     
     // For existing users, generate a subset of connections based on their userId
     // This simulates different users having different connected services
     const userConnections = [];
+    
+    // Add the mock connections based on user ID
     const numConnections = parseInt(userNum) % 5; // 0-4 connections
     
     for (let i = 0; i < numConnections; i++) {
@@ -425,7 +429,265 @@ export class KnotClient {
       });
     }
     
-    return userConnections;
+    // Add any forced connections from our cache
+    const forcedConnections = this.getForcedConnectionsFromCache(userId);
+    
+    // Merge the connections, avoiding duplicates
+    const mergedConnections = [...userConnections];
+    
+    for (const forcedConn of forcedConnections) {
+      // Only add if this merchant isn't already connected
+      if (!mergedConnections.some(conn => conn.merchant.toLowerCase() === forcedConn.merchant.toLowerCase())) {
+        mergedConnections.push(forcedConn);
+      }
+    }
+    
+    return mergedConnections;
+  }
+
+  // Get forced connections from browser localStorage (or memory on server)
+  private getForcedConnectionsFromCache(userId: string): any[] {
+    if (this.debug) {
+      console.log(`Getting forced connections for user ${userId}`);
+    }
+    
+    // When running on server, we can't use localStorage
+    if (typeof window === 'undefined') {
+      // Just return empty array on server
+      return [];
+    }
+    
+    try {
+      // Attempt to get cached forced connections from localStorage
+      const cacheKey = `knot-forced-connections-${userId}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+    } catch (error) {
+      console.error("Error getting forced connections from cache:", error);
+    }
+    
+    return [];
+  }
+
+  // Method to get Spotify data for a user
+  async getSpotifyData(userId: string): Promise<any> {
+    console.log(`Getting Spotify data for user ${userId}`);
+    try {
+      // In a real implementation, we would fetch this data from Spotify API
+      // For now, we'll return mock data
+      return {
+        recentTracks: [
+          { 
+            id: "track-recent-1", 
+            name: "Blinding Lights", 
+            artist: "The Weeknd", 
+            album: "After Hours", 
+            playedAt: "2023-06-18" 
+          },
+          { 
+            id: "track-recent-2", 
+            name: "As It Was", 
+            artist: "Harry Styles", 
+            album: "Harry's House", 
+            playedAt: "2023-06-17" 
+          },
+          { 
+            id: "track-recent-3", 
+            name: "Bad Habit", 
+            artist: "Steve Lacy", 
+            album: "Gemini Rights", 
+            playedAt: "2023-06-16" 
+          }
+        ],
+        topGenres: ["Pop", "R&B", "Hip-Hop", "Rock", "Indie"],
+        topArtists: [
+          "The Weeknd", 
+          "Taylor Swift", 
+          "Harry Styles", 
+          "Drake", 
+          "Billie Eilish"
+        ],
+        recommendations: [
+          { 
+            id: "rec-spotify-1", 
+            name: "Heat Waves", 
+            artist: "Glass Animals", 
+            album: "Dreamland" 
+          },
+          { 
+            id: "rec-spotify-2", 
+            name: "Shivers", 
+            artist: "Ed Sheeran", 
+            album: "=" 
+          },
+          { 
+            id: "rec-spotify-3", 
+            name: "Easy On Me", 
+            artist: "Adele", 
+            album: "30" 
+          }
+        ]
+      };
+    } catch (error) {
+      console.error("Error fetching Spotify data:", error);
+      throw error;
+    }
+  }
+
+  // Method to get Netflix data for a user
+  async getNetflixData(userId: string): Promise<any> {
+    console.log(`Getting Netflix data for user ${userId}`);
+    try {
+      // In a real implementation, we would fetch this data from Netflix API
+      // For now, we'll return mock data
+      return {
+        recentlyWatched: [
+          { 
+            id: "show-netflix-1", 
+            title: "Stranger Things", 
+            type: "TV Series", 
+            genre: "Sci-Fi & Fantasy", 
+            watchedAt: "2023-06-18" 
+          },
+          { 
+            id: "show-netflix-2", 
+            title: "Wednesday", 
+            type: "TV Series", 
+            genre: "Comedy Horror", 
+            watchedAt: "2023-06-15" 
+          },
+          { 
+            id: "show-netflix-3", 
+            title: "The Queen's Gambit", 
+            type: "Limited Series", 
+            genre: "Drama", 
+            watchedAt: "2023-06-10" 
+          }
+        ],
+        topGenres: ["Drama", "Sci-Fi & Fantasy", "Comedy", "Action & Adventure", "Crime"],
+        recommendations: [
+          { 
+            id: "rec-netflix-1", 
+            title: "Black Mirror", 
+            type: "TV Series", 
+            genre: "Sci-Fi & Fantasy" 
+          },
+          { 
+            id: "rec-netflix-2", 
+            title: "Ozark", 
+            type: "TV Series", 
+            genre: "Crime Drama" 
+          },
+          { 
+            id: "rec-netflix-3", 
+            title: "The Witcher", 
+            type: "TV Series", 
+            genre: "Fantasy" 
+          }
+        ],
+        upcomingReleases: [
+          { 
+            id: "upcoming-netflix-1", 
+            title: "Squid Game Season 2", 
+            releaseDate: "2023-12-01", 
+            type: "TV Series" 
+          },
+          { 
+            id: "upcoming-netflix-2", 
+            title: "Stranger Things Season 5", 
+            releaseDate: "2024-03-15", 
+            type: "TV Series" 
+          }
+        ]
+      };
+    } catch (error) {
+      console.error("Error fetching Netflix data:", error);
+      throw error;
+    }
+  }
+
+  // Force a connection to be available for a user (for testing/demo purposes)
+  async forceConnectionForUser(userId: string, merchantName: string, merchantId: number) {
+    try {
+      if (this.debug) {
+        console.log(`Forcing connection for user ${userId}: ${merchantName} (ID: ${merchantId})`);
+      }
+      
+      // This method is specifically for the mock implementation
+      // It ensures that when a user connects a service, it's immediately available in their list
+      
+      // Normally this data would be stored in a database
+      // For our demo, we'll use localStorage to persist between page refreshes
+      
+      // Create new connection object
+      const newConnection = {
+        merchant: merchantName,
+        merchant_id: merchantId,
+        connection_id: `knot-connection-${merchantName.toLowerCase().replace(/\s+/g, "-")}-${userId.substring(0, 8)}-forced`,
+        connected_at: new Date().toISOString()
+      };
+      
+      // Store in localStorage if available (client-side only)
+      if (typeof window !== 'undefined') {
+        try {
+          const cacheKey = `knot-forced-connections-${userId}`;
+          let connections = [];
+          
+          try {
+            const existingCache = localStorage.getItem(cacheKey);
+            if (existingCache) {
+              connections = JSON.parse(existingCache);
+            }
+          } catch (e) {
+            console.error("Error parsing cached connections:", e);
+            // Continue with empty connections array
+          }
+          
+          // Add new connection if not already in the cache
+          const existingConnection = connections.findIndex(conn => 
+            conn.merchant.toLowerCase() === merchantName.toLowerCase()
+          );
+          
+          if (existingConnection >= 0) {
+            // Update existing connection
+            connections[existingConnection] = newConnection;
+          } else {
+            // Add new connection
+            connections.push(newConnection);
+          }
+          
+          // Save to localStorage
+          localStorage.setItem(cacheKey, JSON.stringify(connections));
+          console.log(`Saved connection to localStorage: ${merchantName}`);
+        } catch (error) {
+          console.error("Error storing connection in cache:", error);
+        }
+      } else {
+        console.log("Can't store connection - not in browser environment");
+      }
+      
+      console.log(`Added forced connection for user ${userId}: ${merchantName}`);
+      
+      return {
+        success: true,
+        user_id: userId,
+        merchant: merchantName,
+        merchant_id: merchantId,
+        connection_id: newConnection.connection_id,
+        connected_at: newConnection.connected_at
+      };
+    } catch (error) {
+      console.error("Error forcing connection:", error);
+      return {
+        success: false,
+        error: "Failed to force connection",
+        user_id: userId,
+        merchant: merchantName
+      };
+    }
   }
 }
 
