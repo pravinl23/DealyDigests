@@ -12,44 +12,14 @@ export default function CardsPage() {
   // Log the Auth0 user data to debug
   useEffect(() => {
     // Detailed debug log to see exactly what Auth0 is returning
-    console.log('Auth0 full user object:', JSON.stringify(user));
+    console.log('Auth0 full user object:', user);
     
     if (user) {
+      console.log('Auth0 user sub (id):', user.sub);
       console.log('Auth0 user email:', user.email);
       setAuthenticated(true);
-    } else if (!isLoading) {
-      console.log('User not found but loading finished - possible auth issue');
-      
-      // Check session endpoint directly as a fallback
-      fetch('/api/auth/me')
-        .then(response => response.json())
-        .then(data => {
-          console.log('Session check from /api/auth/me:', data);
-          if (data && data.email) {
-            console.log('Found email from direct session check:', data.email);
-            window.location.reload(); // Force a reload if we detect a session mismatch
-          }
-        })
-        .catch(err => console.error('Error checking session:', err));
     }
-  }, [user, isLoading]);
-
-  // Try to reload once if we have auth issues
-  useEffect(() => {
-    // If we've been waiting for too long, force a page reload
-    let authTimeout: NodeJS.Timeout;
-    
-    if (isLoading) {
-      authTimeout = setTimeout(() => {
-        console.log('Auth loading timeout - forcing refresh');
-        window.location.reload();
-      }, 5000); // 5 second timeout
-    }
-    
-    return () => {
-      if (authTimeout) clearTimeout(authTimeout);
-    };
-  }, [isLoading]);
+  }, [user]);
 
   if (isLoading) {
     console.log('Auth0 is loading...');
@@ -85,8 +55,8 @@ export default function CardsPage() {
     );
   }
 
-  if (!user || !user.email) {
-    console.log('No user or email from Auth0');
+  if (!user) {
+    console.log('No user from Auth0');
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -97,12 +67,6 @@ export default function CardsPage() {
               <a href="/api/auth/login" className="px-4 py-2 bg-blue-600 text-white rounded-md">
                 Log In
               </a>
-              <button 
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
-              >
-                Refresh Page
-              </button>
             </div>
           </div>
         </div>
@@ -110,31 +74,12 @@ export default function CardsPage() {
     );
   }
 
-  // Always use user.email directly
-  const userEmail = user.email;
-  console.log('Rendering CardsList with email:', userEmail);
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Manage Your Cards</h1>
-        {/* Only render CardsList when we have an email */}
-        {userEmail ? (
-          <>
-            <p className="mb-4 text-green-600">Authenticated as: {userEmail}</p>
-            <CardsList userEmail={userEmail} />
-          </>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-600">Could not retrieve your email. Please try again later.</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
-            >
-              Refresh Page
-            </button>
-          </div>
-        )}
+        <p className="mb-4 text-green-600">Authenticated as: {user.email}</p>
+        <CardsList />
       </div>
     </div>
   );
