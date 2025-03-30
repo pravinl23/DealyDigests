@@ -41,6 +41,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
+import { CardsList } from "@/components/card-display";
 
 // Types for Knot SDK
 type Product = "card_switcher" | "transaction_link";
@@ -404,7 +405,7 @@ export default function DashboardPage() {
       setKnotError("You must be logged in to connect with Knot");
       return null;
     }
-
+    
     try {
       setLoading(true);
       setKnotError(null);
@@ -423,7 +424,7 @@ export default function DashboardPage() {
           product: selectedProduct,
         }),
       });
-
+      
       const text = await response.text();
       let data;
 
@@ -1128,7 +1129,7 @@ export default function DashboardPage() {
   // Render AI Insights tab
   const renderAIInsights = () => {
     if (insightsLoading) {
-      return (
+  return (
         <div className="flex flex-col items-center justify-center py-12">
           <motion.div
             animate={{ rotate: 360 }}
@@ -1156,7 +1157,7 @@ export default function DashboardPage() {
             >
               Try Again
             </button>
-          </div>
+              </div>
         </div>
       );
     }
@@ -1168,7 +1169,7 @@ export default function DashboardPage() {
             No insights available. Connect your accounts to start seeing
             AI-powered financial insights.
           </p>
-        </div>
+              </div>
       );
     }
 
@@ -1201,11 +1202,11 @@ export default function DashboardPage() {
                     >
                       <div className="text-6xl font-bold">
                         {insights.aiScore}
-                      </div>
+              </div>
                       <div className="text-sm mt-1 opacity-80">out of 100</div>
                     </motion.div>
                   </motion.div>
-                </div>
+            </div>
                 <svg className="w-full h-full" viewBox="0 0 100 100">
                   <motion.circle
                     initial={{ pathLength: 0 }}
@@ -1224,7 +1225,7 @@ export default function DashboardPage() {
                     className="drop-shadow-md"
                   />
                 </svg>
-              </div>
+          </div>
             </div>
           </div>
         </motion.div>
@@ -1336,7 +1337,7 @@ export default function DashboardPage() {
                       </RechartsPieChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
+              </div>
 
                 {/* Top Merchants */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -1364,7 +1365,7 @@ export default function DashboardPage() {
                         />
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
+                      </div>
                 </div>
               </div>
 
@@ -1448,7 +1449,7 @@ export default function DashboardPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
+                  </div>
 
                 {/* Time Usage by Content Type */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -1474,7 +1475,7 @@ export default function DashboardPage() {
                         />
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
+                      </div>
                 </div>
               </div>
 
@@ -1662,7 +1663,7 @@ export default function DashboardPage() {
 
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {dealCategories.map((category) => (
-            <button
+                          <button 
               key={category}
               onClick={() => setActiveDealsFilter(category)}
               className={`${
@@ -1673,9 +1674,9 @@ export default function DashboardPage() {
             >
               {category.charAt(0).toUpperCase() + category.slice(1)}
               {category === "all" && " Deals"}
-            </button>
+                          </button>
           ))}
-        </div>
+                        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {getFilteredDeals().map((deal) => (
@@ -1685,7 +1686,7 @@ export default function DashboardPage() {
             >
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <div>
+                              <div>
                     <h3 className="text-lg font-semibold">{deal.title}</h3>
                     <p className="text-sm text-gray-500">{deal.card}</p>
                   </div>
@@ -1743,49 +1744,49 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div>
               <label className="block mb-1 text-sm">Merchant Name *</label>
-              <input
-                type="text"
-                name="merchant"
+                                <input
+                                  type="text"
+                                  name="merchant"
                 value={transactionForm.merchant}
                 onChange={handleTransactionFormChange}
                 className="w-full border border-gray-300 rounded-lg p-2"
                 placeholder="e.g., Starbucks"
-                required
-              />
-            </div>
-
-            <div>
+                                  required
+                                />
+                              </div>
+                              
+                              <div>
               <label className="block mb-1 text-sm">Amount *</label>
-              <input
-                type="number"
-                name="amount"
+                                <input
+                                  type="number"
+                                  name="amount"
                 value={transactionForm.amount || ""}
                 onChange={handleTransactionFormChange}
                 className="w-full border border-gray-300 rounded-lg p-2"
-                step="0.01"
+                                  step="0.01"
                 min="0.01"
                 placeholder="0.00"
-                required
-              />
-            </div>
-
-            <div>
+                                  required
+                                />
+                              </div>
+                              
+                              <div>
               <label className="block mb-1 text-sm">Category</label>
-              <select
-                name="category"
+                                <select
+                                  name="category"
                 value={transactionForm.category}
                 onChange={handleTransactionFormChange}
                 className="w-full border border-gray-300 rounded-lg p-2"
-              >
-                <option value="Dining">Dining</option>
-                <option value="Shopping">Shopping</option>
+                                >
+                                  <option value="Dining">Dining</option>
+                                  <option value="Shopping">Shopping</option>
                 <option value="Travel">Travel</option>
-                <option value="Entertainment">Entertainment</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            <div>
+                                  <option value="Entertainment">Entertainment</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                              </div>
+                              
+                              <div>
               <label className="block mb-1 text-sm">Card *</label>
               <select
                 name="card"
@@ -1825,24 +1826,24 @@ export default function DashboardPage() {
                 value={transactionForm.date}
                 onChange={handleTransactionFormChange}
                 className="w-full border border-gray-300 rounded-lg p-2"
-              />
-            </div>
-
+                                />
+                              </div>
+                              
             <div className="flex justify-end gap-2 mt-6">
-              <button
+                              <button
                 onClick={() => setShowTransactionModal(false)}
                 className="border border-gray-300 px-4 py-2 rounded-lg"
-              >
+                              >
                 Cancel
-              </button>
+                              </button>
               <button
                 onClick={addTransaction}
                 className="bg-slate-900 text-white px-4 py-2 rounded-lg"
               >
                 Add Transaction
               </button>
-            </div>
-          </div>
+                          </div>
+                  </div>
         </div>
       </div>
     );
@@ -1875,7 +1876,7 @@ export default function DashboardPage() {
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
               </svg>
               Insights
-            </span>
+                    </span>
           </button>
 
           <button
@@ -1903,7 +1904,7 @@ export default function DashboardPage() {
             </span>
           </button>
 
-          <button
+                      <button 
             onClick={() => setActiveTab("ai-insights")}
             className={`pb-4 px-2 ${
               activeTab === "ai-insights"
@@ -1915,7 +1916,7 @@ export default function DashboardPage() {
               <Brain className="h-5 w-5" />
               AI Insights
             </span>
-          </button>
+                      </button>
 
           <button
             onClick={() => setActiveTab("entertainment")}
@@ -1940,7 +1941,7 @@ export default function DashboardPage() {
               Entertainment
             </span>
           </button>
-        </div>
+                            </div>
       </div>
 
       {/* Account Connection Section (Only visible on Insights tab) */}
@@ -1958,12 +1959,12 @@ export default function DashboardPage() {
                     {service.name}{" "}
                     <span className="text-xs text-gray-600">
                       {service.date}
-                    </span>
-                  </div>
+                                </span>
+                            </div>
                 ))}
-              </div>
-            </div>
-
+                          </div>
+                        </div>
+                        
             <div className="md:col-span-3">
               <h2 className="text-xl font-semibold mb-4">
                 Connect your accounts
@@ -1974,7 +1975,7 @@ export default function DashboardPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
+                            <div>
                   <div className="mb-2">Select product:</div>
                   <div className="grid grid-cols-2 gap-4">
                     <button
@@ -1997,9 +1998,9 @@ export default function DashboardPage() {
                     >
                       Transaction Link
                     </button>
-                  </div>
-                </div>
-
+                            </div>
+                          </div>
+                          
                 <div>
                   <div className="mb-2">Select a merchant to connect:</div>
                   <div className="relative" ref={dropdownRef}>
@@ -2031,13 +2032,13 @@ export default function DashboardPage() {
                             {merchant.name} (ID: {merchant.id})
                           </button>
                         ))}
-                      </div>
+                        </div>
                     )}
-                  </div>
+                      </div>
                 </div>
-              </div>
-
-              <button
+                  </div>
+                  
+                      <button 
                 className="bg-slate-900 text-white px-6 py-4 rounded-lg font-medium w-full"
                 onClick={connectWithKnot}
                 disabled={loading || !sdkLoaded}
@@ -2047,7 +2048,7 @@ export default function DashboardPage() {
                   : !sdkLoaded
                   ? "Loading Knot SDK..."
                   : "Connect Your Accounts with Knot"}
-              </button>
+                      </button>
 
               {knotError && (
                 <div className="mt-3 text-red-500 text-sm">{knotError}</div>
@@ -2058,8 +2059,8 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        </div>
-      )}
+                </div>
+              )}
 
       {/* Tab Content */}
       {activeTab === "insights" && (
@@ -2075,54 +2076,9 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Your Cards</h2>
-                <button
-                  onClick={fetchUserCards}
-                  className="text-blue-500 text-sm hover:underline"
-                >
-                  Refresh
-                </button>
               </div>
-              <div className="border border-gray-200 rounded-lg p-6 min-h-[200px]">
-                {cardsLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-                  </div>
-                ) : cardsError ? (
-                  <div className="flex items-center justify-center h-full text-red-500">
-                    {cardsError}
-                  </div>
-                ) : userCards.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <p>No cards found</p>
-                    <p className="text-sm mt-2">
-                      Connect with Knot to add your cards
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {userCards.map((card, index) => (
-                      <div
-                        key={index}
-                        className="border border-gray-200 rounded-lg p-4"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">
-                              {card.name || "Credit Card"}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              •••• {card.last4 || "****"}
-                              {card.expiry && ` • Expires: ${card.expiry}`}
-                            </div>
-                          </div>
-                          <div className="text-sm font-medium">
-                            {card.card_type || "Card"}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="rounded-lg min-h-[200px]">
+                <CardsList />
               </div>
             </div>
 
@@ -2137,7 +2093,7 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="space-y-4">
+                <div className="space-y-4">
                 {transactionsList.slice(0, 6).map((tx) => (
                   <div
                     key={tx.id}
@@ -2147,24 +2103,24 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-md bg-purple-500 flex items-center justify-center text-white">
                           {tx.merchant.charAt(0)}
-                        </div>
+                  </div>
                         <div>
                           <div className="font-medium">{tx.merchant}</div>
                           <div className="text-sm text-gray-500">
                             {tx.card} • {tx.date}
-                          </div>
-                        </div>
-                      </div>
+                  </div>
+                  </div>
+                  </div>
                       <div className="text-right">
                         <div className="font-medium">
                           ${tx.amount.toFixed(2)}
-                        </div>
+                </div>
                         <div className="text-sm text-gray-500">
                           {tx.category}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              </div>
+            </div>
+          </div>
+        </div>
                 ))}
               </div>
             </div>

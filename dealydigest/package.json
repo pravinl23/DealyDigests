@@ -10,13 +10,9 @@
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^3.7.0",
-<<<<<<< Updated upstream
     "@google/generative-ai": "^0.24.0",
     "axios": "^1.8.4",
     "cheerio": "^1.0.0",
-=======
-    "@google/generative-ai": "^0.2.1",
->>>>>>> Stashed changes
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
