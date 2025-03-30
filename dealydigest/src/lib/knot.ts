@@ -1,9 +1,11 @@
 export class KnotClient {
   private apiKey: string;
   private debug: boolean = true;
+  private apiSecret: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, apiSecret: string = "") {
     this.apiKey = apiKey;
+    this.apiSecret = apiSecret;
     if (this.debug) {
       console.log(
         "KnotClient initialized with API key:",
@@ -231,8 +233,66 @@ export class KnotClient {
       ],
     };
   }
+
+  // Verify webhook signature based on Knot documentation
+  async verifyWebhookSignature(
+    signature: string,
+    headers: Record<string, string>,
+    body: Record<string, any>
+  ): Promise<boolean> {
+    try {
+      if (!this.apiSecret) {
+        console.error("API secret is required to verify webhook signatures");
+        return false;
+      }
+
+      // Create the hash map according to Knot's documentation
+      const data: Record<string, string> = {
+        "Content-Length": headers["content-length"] || "",
+        "Content-Type": headers["content-type"] || "",
+        "Encryption-Type": headers["encryption-type"] || "",
+        event: body.event || "",
+      };
+
+      // Add session_id if it exists in the body
+      if (body.session_id) {
+        data["session_id"] = body.session_id;
+      }
+
+      // Build the signature string
+      let signatureString = "";
+      for (const [key, value] of Object.entries(data)) {
+        signatureString += `${key}|${value}|`;
+      }
+      // Remove the trailing |
+      signatureString = signatureString.slice(0, -1);
+
+      if (this.debug) {
+        console.log("Signature string:", signatureString);
+      }
+
+      // Compute HMAC using the crypto module
+      const crypto = require("crypto");
+      const hmac = crypto.createHmac("sha256", this.apiSecret);
+      hmac.update(signatureString);
+      const computedSignature = hmac.digest("base64");
+
+      if (this.debug) {
+        console.log("Received signature:", signature);
+        console.log("Computed signature:", computedSignature);
+      }
+
+      return signature === computedSignature;
+    } catch (error) {
+      console.error("Error verifying webhook signature:", error);
+      return false;
+    }
+  }
 }
 
 // Export both the class and a singleton instance
-export const knotClient = new KnotClient(process.env.KNOT_API_SECRET || "");
+export const knotClient = new KnotClient(
+  process.env.KNOT_API_KEY || "",
+  process.env.KNOT_API_SECRET || ""
+);
 export default knotClient;

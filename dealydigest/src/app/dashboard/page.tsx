@@ -3,7 +3,12 @@
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { InsightIcon, RecommendationIcon, EntertainmentIcon, Tabs } from "@/components/tabs";
+import {
+  InsightIcon,
+  RecommendationIcon,
+  EntertainmentIcon,
+  Tabs,
+} from "@/components/tabs";
 import { SpendingChart } from "@/components/spending-chart";
 import { TransactionsList } from "@/components/transactions-list";
 import { CardsList } from "@/components/card-display";
@@ -85,14 +90,14 @@ export default function DashboardPage() {
   const fetchTransactions = async () => {
     setIsDataLoading(true);
     try {
-      const response = await fetch('/api/transactions');
+      const response = await fetch("/api/transactions");
       const data = await response.json();
       if (data.success) {
         setTransactions(data.transactions);
         setSpendingData(data.chartData);
       }
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error("Error fetching transactions:", error);
     } finally {
       setIsDataLoading(false);
     }
@@ -104,27 +109,31 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleFormChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.merchant || !formData.amount) {
       alert("Please fill in merchant and amount");
       return;
     }
-    
+
     try {
-      const response = await fetch('/api/transactions', {
-        method: 'POST',
+      const response = await fetch("/api/transactions", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           merchant: formData.merchant,
@@ -133,7 +142,7 @@ export default function DashboardPage() {
           description: formData.description,
         }),
       });
-      
+
       const data = await response.json();
       if (data.success) {
         // Clear form
@@ -143,15 +152,15 @@ export default function DashboardPage() {
           category: "Dining",
           description: "",
         });
-        
+
         // Hide form
         setIsAddingTransaction(false);
-        
+
         // Refresh transactions
         fetchTransactions();
       }
     } catch (error) {
-      console.error('Error adding transaction:', error);
+      console.error("Error adding transaction:", error);
     }
   };
 
@@ -196,65 +205,75 @@ export default function DashboardPage() {
     {
       id: "deal1",
       title: "Earn 5% back on Chase Dining",
-      description: "Use your Chase Sapphire Reserve for dining purchases and earn 5% back.",
+      description:
+        "Use your Chase Sapphire Reserve for dining purchases and earn 5% back.",
       category: "dining",
       expiryDate: "2025-06-30",
       cardName: "Chase Sapphire Reserve",
       imageUrl: "/images/dining.jpg",
       discountValue: "5%",
-      specialTerms: "Valid at select restaurants only. Maximum cash back of $50 per month.",
+      specialTerms:
+        "Valid at select restaurants only. Maximum cash back of $50 per month.",
       isLimited: false,
       isNewOffer: true,
     },
     {
       id: "deal2",
       title: "$50 off $200+ at United Airlines",
-      description: "Book a flight with your Chase Sapphire Reserve and get $50 off.",
+      description:
+        "Book a flight with your Chase Sapphire Reserve and get $50 off.",
       category: "travel",
       expiryDate: "2025-05-15",
       cardName: "Chase Sapphire Reserve",
       imageUrl: "/images/travel.jpg",
       discountValue: "$50",
-      specialTerms: "Valid for flights booked directly with United Airlines. Minimum purchase of $200.",
+      specialTerms:
+        "Valid for flights booked directly with United Airlines. Minimum purchase of $200.",
       isLimited: true,
       isNewOffer: false,
     },
     {
       id: "deal3",
       title: "10% Back at Amazon",
-      description: "Limited time offer: Get 10% back on Amazon purchases with your Freedom Unlimited card.",
+      description:
+        "Limited time offer: Get 10% back on Amazon purchases with your Freedom Unlimited card.",
       category: "shopping",
       expiryDate: "2025-04-30",
       cardName: "Freedom Unlimited",
       imageUrl: "/images/shopping.jpg",
       discountValue: "10%",
-      specialTerms: "Maximum cash back of $30. Valid for purchases made directly on Amazon.com.",
+      specialTerms:
+        "Maximum cash back of $30. Valid for purchases made directly on Amazon.com.",
       isLimited: true,
       isNewOffer: true,
     },
     {
       id: "deal4",
       title: "3 Months Free Disney+",
-      description: "Subscribe to Disney+ and get 3 months free when you pay with your Chase card.",
+      description:
+        "Subscribe to Disney+ and get 3 months free when you pay with your Chase card.",
       category: "entertainment",
       expiryDate: "2025-07-31",
       cardName: "Any Chase Card",
       imageUrl: "/images/streaming.jpg",
       discountValue: "3 months",
-      specialTerms: "New Disney+ subscribers only. Subscription will auto-renew after free period.",
+      specialTerms:
+        "New Disney+ subscribers only. Subscription will auto-renew after free period.",
       isLimited: false,
       isNewOffer: true,
     },
     {
       id: "deal5",
       title: "2x Points at Gas Stations",
-      description: "Earn double points on all gas station purchases this month.",
+      description:
+        "Earn double points on all gas station purchases this month.",
       category: "travel",
       expiryDate: "2025-04-30",
       cardName: "Freedom Unlimited",
       imageUrl: "/images/gas.jpg",
       discountValue: "2x",
-      specialTerms: "Automatic enrollment. Points awarded within 2 billing cycles.",
+      specialTerms:
+        "Automatic enrollment. Points awarded within 2 billing cycles.",
       isLimited: true,
       isNewOffer: false,
     },
@@ -274,13 +293,15 @@ export default function DashboardPage() {
     {
       id: "deal7",
       title: "Free Concert Ticket",
-      description: "Buy one concert ticket and get one free at participating venues.",
+      description:
+        "Buy one concert ticket and get one free at participating venues.",
       category: "entertainment",
       expiryDate: "2025-08-31",
       cardName: "Any Chase Card",
       imageUrl: "/images/concert.jpg",
       discountValue: "BOGO",
-      specialTerms: "Available at select venues only. Limit one free ticket per cardholder.",
+      specialTerms:
+        "Available at select venues only. Limit one free ticket per cardholder.",
       isLimited: true,
       isNewOffer: false,
     },
@@ -302,17 +323,18 @@ export default function DashboardPage() {
   // Format date string to a readable format
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     }).format(date);
   };
 
   // Filter deals by category
-  const filteredDeals = dealsCategory === "all" 
-    ? deals 
-    : deals.filter(deal => deal.category === dealsCategory);
+  const filteredDeals =
+    dealsCategory === "all"
+      ? deals
+      : deals.filter((deal) => deal.category === dealsCategory);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -377,9 +399,13 @@ export default function DashboardPage() {
                     ) : (
                       <>
                         <div className="flex justify-between items-center mb-4">
-                          <h2 className="text-xl font-medium">Recent Transactions</h2>
-                          <button 
-                            onClick={() => setIsAddingTransaction(!isAddingTransaction)}
+                          <h2 className="text-xl font-medium">
+                            Recent Transactions
+                          </h2>
+                          <button
+                            onClick={() =>
+                              setIsAddingTransaction(!isAddingTransaction)
+                            }
                             className="px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark"
                           >
                             {isAddingTransaction ? "Cancel" : "Add Transaction"}
@@ -388,7 +414,9 @@ export default function DashboardPage() {
 
                         {isAddingTransaction && (
                           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                            <h3 className="text-lg font-medium mb-3">Add New Transaction</h3>
+                            <h3 className="text-lg font-medium mb-3">
+                              Add New Transaction
+                            </h3>
                             <form onSubmit={handleSubmit} className="space-y-4">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -403,7 +431,7 @@ export default function DashboardPage() {
                                   required
                                 />
                               </div>
-                              
+
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                   Amount ($)
@@ -419,7 +447,7 @@ export default function DashboardPage() {
                                   required
                                 />
                               </div>
-                              
+
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                   Category
@@ -434,12 +462,16 @@ export default function DashboardPage() {
                                   <option value="Travel">Travel</option>
                                   <option value="Shopping">Shopping</option>
                                   <option value="Groceries">Groceries</option>
-                                  <option value="Entertainment">Entertainment</option>
-                                  <option value="Transportation">Transportation</option>
+                                  <option value="Entertainment">
+                                    Entertainment
+                                  </option>
+                                  <option value="Transportation">
+                                    Transportation
+                                  </option>
                                   <option value="Other">Other</option>
                                 </select>
                               </div>
-                              
+
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                   Description (Optional)
@@ -452,7 +484,7 @@ export default function DashboardPage() {
                                   rows={2}
                                 />
                               </div>
-                              
+
                               <button
                                 type="submit"
                                 className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
@@ -462,7 +494,7 @@ export default function DashboardPage() {
                             </form>
                           </div>
                         )}
-                        
+
                         <TransactionsList transactions={transactions} />
                       </>
                     )}
@@ -473,26 +505,29 @@ export default function DashboardPage() {
               {activeTab === "deals" && (
                 <div className="card p-6 space-y-6">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-primary">Available Deals</h2>
+                    <h2 className="text-2xl font-bold text-primary">
+                      Available Deals
+                    </h2>
                     <span className="bg-primary text-white text-sm px-3 py-1 rounded-full">
                       {filteredDeals.length} Offers
                     </span>
                   </div>
-                  
+
                   <p className="text-gray-600">
-                    Exclusive offers and discounts based on your spending patterns and card benefits.
+                    Exclusive offers and discounts based on your spending
+                    patterns and card benefits.
                   </p>
 
                   {/* Categories */}
                   <div className="flex flex-wrap gap-2">
                     {dealCategories.map((category) => (
-                      <button 
+                      <button
                         key={category.id}
                         onClick={() => setDealsCategory(category.id)}
                         className={`px-3 py-1 text-sm rounded-full ${
                           dealsCategory === category.id
-                            ? 'bg-primary text-white'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                            ? "bg-primary text-white"
+                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                         }`}
                       >
                         {category.label}
@@ -503,15 +538,24 @@ export default function DashboardPage() {
                   {/* Deals grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredDeals.map((deal) => (
-                      <div key={deal.id} className="border rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
+                      <div
+                        key={deal.id}
+                        className="border rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow"
+                      >
                         <div className="p-4 border-b">
                           <div className="flex items-start justify-between">
                             <div>
-                              <h3 className="font-semibold text-lg">{deal.title}</h3>
-                              <p className="text-sm text-gray-500">{deal.cardName}</p>
+                              <h3 className="font-semibold text-lg">
+                                {deal.title}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                {deal.cardName}
+                              </p>
                             </div>
                             <div className="flex flex-col items-end">
-                              <span className="font-bold text-primary text-xl">{deal.discountValue}</span>
+                              <span className="font-bold text-primary text-xl">
+                                {deal.discountValue}
+                              </span>
                               {deal.isNewOffer && (
                                 <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full mt-1">
                                   New Offer
@@ -525,24 +569,24 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="p-4">
-                          <p className="text-sm text-gray-600 mb-3">{deal.description}</p>
-                          
+                          <p className="text-sm text-gray-600 mb-3">
+                            {deal.description}
+                          </p>
+
                           <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
                             <div className="flex items-center">
                               <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
                               Active
                             </div>
-                            <div>
-                              Expires: {formatDate(deal.expiryDate)}
-                            </div>
+                            <div>Expires: {formatDate(deal.expiryDate)}</div>
                           </div>
-                          
+
                           <div className="text-xs text-gray-500 mb-4 italic">
                             {deal.specialTerms}
                           </div>
-                          
+
                           <Link
                             href={`/deals/${deal.id}`}
                             className="block w-full bg-primary text-white rounded-lg text-center px-3 py-2 text-sm hover:bg-primary-dark transition-colors"
@@ -553,13 +597,17 @@ export default function DashboardPage() {
                       </div>
                     ))}
                   </div>
-                  
+
                   {filteredDeals.length === 0 && (
                     <div className="text-center py-10 border border-gray-200 rounded-lg">
                       <RecommendationIcon className="h-12 w-12 mx-auto opacity-20 mb-2" />
-                      <h3 className="text-lg font-medium">No deals available</h3>
-                      <p className="text-gray-500">No deals match your current filter</p>
-                      <button 
+                      <h3 className="text-lg font-medium">
+                        No deals available
+                      </h3>
+                      <p className="text-gray-500">
+                        No deals match your current filter
+                      </p>
+                      <button
                         onClick={() => setDealsCategory("all")}
                         className="mt-3 px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark"
                       >

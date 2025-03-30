@@ -46,7 +46,7 @@ const KnotLink = () => {
   useEffect(() => {
     setMounted(true);
     // Try to check if SDK is already loaded on mount
-    if (typeof window !== 'undefined' && window.knotapi) {
+    if (typeof window !== "undefined" && window.knotapi) {
       setSdkLoaded(true);
       console.log("Knot SDK already available on mount");
     }
@@ -139,16 +139,18 @@ const KnotLink = () => {
         console.warn("Component not mounted yet");
         return;
       }
-      
+
       if (!sdkLoaded) {
         console.warn("SDK not loaded yet");
-        
+
         // Retry checking for SDK
-        if (typeof window !== 'undefined' && window.knotapi) {
+        if (typeof window !== "undefined" && window.knotapi) {
           console.log("Found Knot SDK on window object, proceeding...");
           setSdkLoaded(true);
         } else {
-          setError("Knot SDK not loaded. Please refresh the page and try again.");
+          setError(
+            "Knot SDK not loaded. Please refresh the page and try again."
+          );
           setLoading(false);
           return;
         }
@@ -411,9 +413,7 @@ const KnotLink = () => {
       </button>
       {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
       <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
-        <p className="font-mono">
-          SDK Loaded: {sdkLoaded ? "Yes" : "No"}
-        </p>
+        <p className="font-mono">SDK Loaded: {sdkLoaded ? "Yes" : "No"}</p>
         <p className="font-mono">
           Client ID:{" "}
           {process.env.NEXT_PUBLIC_KNOT_CLIENT_ID ||
