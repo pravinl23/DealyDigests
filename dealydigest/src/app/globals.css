@@ -174,34 +174,6 @@
   }
 }
 
-.bg-primary {
-  background-color: var(--primary);
-}
-
-.bg-primary-light {
-  background-color: rgba(10, 25, 47, 0.8);
-}
-
-.text-primary-dark {
-  color: var(--primary-dark);
-}
-
-.text-primary-dark:hover {
-  opacity: 0.8;
-}
-
-.text-success {
-  color: #10b981;
-}
-
-.bg-accent {
-  background-color: var(--accent);
-}
-
-.bg-accent-light {
-  background-color: var(--accent-light);
-}
-
 .chart-bar {
   border-top-left-radius: 0.375rem;
   border-top-right-radius: 0.375rem;
@@ -214,8 +186,14 @@
 }
 
 @keyframes chartBarEnter {
-  from { transform: scaleY(0); opacity: 0; }
-  to { transform: scaleY(1); opacity: 1; }
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
 }
 
 .chart-bar-travel {
@@ -285,7 +263,7 @@
   background: #f1f1f1;
   border-radius: 10px;
 }
- 
+
 /* Handle */
 .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
   background: #d1d5db;
@@ -294,7 +272,7 @@
 
 /* Handle on hover */
 .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af; 
+  background: #9ca3af;
 }
 
 /* Hide scrollbar for IE, Edge and Firefox */
