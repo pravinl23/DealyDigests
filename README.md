@@ -1,6 +1,6 @@
 # DealyDigests
 
-DealyDigests (dealydigest.tech) is a smart credit card recommendation platform that helps users maximize their credit card rewards by suggesting the best card to use based on location, merchant category, and their existing card portfolio.
+DealyDigests ([dealydigest.tech](dealydigest.tech)) is a smart credit card recommendation platform that helps users maximize their credit card rewards by suggesting the best card to use based on location, merchant category, and their existing card portfolio.
 
 ## Features
 
