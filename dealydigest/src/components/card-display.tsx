@@ -22,6 +22,101 @@ interface CardFormData {
   type: string;
 }
 
+interface ValidationErrors {
+  cardName?: string;
+  cardNumber?: string;
+  expiryMonth?: string;
+  expiryYear?: string;
+  issuer?: string;
+  general?: string;
+}
+
+// Card number validation using Luhn algorithm
+function validateCardNumber(number: string): boolean {
+  // Remove spaces and dashes
+  const cardNumber = number.replace(/[\s-]/g, '');
+  
+  // Check if it's a valid length and only contains digits
+  if (!/^\d+$/.test(cardNumber) || cardNumber.length < 13 || cardNumber.length > 19) {
+    return false;
+  }
+  
+  // Luhn algorithm implementation
+  let sum = 0;
+  let shouldDouble = false;
+  
+  // Loop through each digit from right to left
+  for (let i = cardNumber.length - 1; i >= 0; i--) {
+    let digit = parseInt(cardNumber.charAt(i));
+    
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  
+  return sum % 10 === 0;
+}
+
+// Detect card issuer based on card number
+function detectCardIssuer(cardNumber: string): string | null {
+  // Remove spaces and dashes
+  const number = cardNumber.replace(/[\s-]/g, '');
+  
+  // Check for card types based on BIN ranges
+  // Visa
+  if (/^4/.test(number)) {
+    return "Visa";
+  }
+  // Mastercard
+  else if (/^5[1-5]/.test(number) || /^2[2-7]/.test(number)) {
+    return "Mastercard";
+  }
+  // American Express
+  else if (/^3[47]/.test(number)) {
+    return "American Express";
+  }
+  // Discover
+  else if (/^6(?:011|5)/.test(number)) {
+    return "Discover";
+  }
+  // Capital One (simplified - in reality would be more complex)
+  else if (/^5[0,6-8]/.test(number)) {
+    return "Capital One";
+  }
+  // Chase (simplified - in reality would be more complex)
+  else if (/^4(?:147|175)/.test(number)) {
+    return "Chase";
+  }
+  
+  return null;
+}
+
+// Check if expiry date is valid and not expired
+function isExpiryValid(month: string, year: string): boolean {
+  if (!month || !year) return false;
+  
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear() % 100; // Get last 2 digits
+  const currentMonth = currentDate.getMonth() + 1; // Jan is 0, so +1
+  
+  const expiryYear = parseInt(year);
+  const expiryMonth = parseInt(month);
+  
+  // Check if date is valid
+  if (expiryMonth < 1 || expiryMonth > 12) return false;
+  
+  // Check if expired
+  if (expiryYear < currentYear || (expiryYear === currentYear && expiryMonth < currentMonth)) {
+    return false;
+  }
+  
+  return true;
+}
+
 export function CardDisplay({ card }: CardDisplayProps) {
   const { gradientClass, patternClass, chipClass } = getCardStyle(card.issuer, card.type)
   
@@ -78,6 +173,22 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
       last4: "8901",
       expires: "05/26",
       issuer: "Chase",
+    },
+    {
+      id: "card-3",
+      type: "prepaid",
+      name: "gotynir",
+      last4: "0002",
+      expires: "03/30",
+      issuer: "American Express",
+    },
+    {
+      id: "card-4",
+      type: "credit",
+      name: "foirtnte",
+      last4: "0002",
+      expires: "03/30",
+      issuer: "American Express",
     }
   ];
 
@@ -93,17 +204,89 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
     issuer: "Chase",
     type: "credit"
   });
+  const [errors, setErrors] = useState<ValidationErrors>({});
+  const [formattedCardNumber, setFormattedCardNumber] = useState("");
+  const [detectedIssuer, setDetectedIssuer] = useState<string | null>(null);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Handle special case for card number formatting
+    if (name === 'cardNumber') {
+      // Remove all non-digit characters
+      const digitsOnly = value.replace(/\D/g, '');
+      
+      // Format with spaces
+      let formatted = '';
+      for (let i = 0; i < digitsOnly.length; i++) {
+        if (i > 0 && i % 4 === 0) {
+          formatted += ' ';
+        }
+        formatted += digitsOnly[i];
+      }
+      
+      setFormattedCardNumber(formatted);
+      
+      // Detect issuer
+      const issuer = detectCardIssuer(digitsOnly);
+      setDetectedIssuer(issuer);
+      
+      // Update form data with digits only
+      setFormData(prev => ({
+        ...prev,
+        [name]: digitsOnly,
+        ...(issuer ? { issuer } : {})
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+    
+    // Clear error for this field when user types
+    if (errors[name as keyof ValidationErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
+  };
+  
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {};
+    
+    // Card name validation
+    if (!formData.cardName.trim()) {
+      newErrors.cardName = "Card name is required";
+    }
+    
+    // Card number validation
+    if (!formData.cardNumber) {
+      newErrors.cardNumber = "Card number is required";
+    } else if (!validateCardNumber(formData.cardNumber)) {
+      newErrors.cardNumber = "Invalid card number";
+    }
+    
+    // Expiry validation
+    if (!formData.expiryMonth || !formData.expiryYear) {
+      newErrors.expiryMonth = "Expiry date is required";
+    } else if (!isExpiryValid(formData.expiryMonth, formData.expiryYear)) {
+      newErrors.expiryMonth = "Invalid or expired date";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+    
     // Extract only the last 4 digits from the card number
     const last4 = formData.cardNumber.slice(-4);
     
@@ -130,6 +313,9 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
       issuer: "Chase",
       type: "credit"
     });
+    setFormattedCardNumber("");
+    setDetectedIssuer(null);
+    setErrors({});
   };
   
   // Generate year options (current year + 10 years)
@@ -137,60 +323,76 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
   return (
-    <div className="space-y-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-semibold text-gray-900">Your Cards</h2>
         <span className="text-gray-500">Manage your connected payment cards</span>
       </div>
       
-      <div className="relative rounded-xl overflow-hidden">
-        {/* Scrollable cards container */}
-        <div className="flex flex-col space-y-4">
+      <div className="relative">
+        <div className="flex flex-col space-y-4 max-h-[500px] overflow-y-auto pr-1">
           {cards.map((card) => (
             <div 
               key={card.id} 
-              className="flex overflow-hidden rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md"
+              className="rounded-xl border border-gray-200 shadow-sm overflow-hidden"
             >
-              {/* Colored bar on the left, similar to Netflix UI */}
-              <div className="w-2 bg-blue-600"></div>
-              
-              <div className="flex items-center p-4 w-full bg-white">
-                <div className="flex-shrink-0 mr-6">
-                  <div className={`h-12 w-12 rounded-full flex items-center justify-center ${getIssuerBgClass(card.issuer)}`}>
-                    <span className="text-white text-xs font-bold">{getIssuerInitials(card.issuer)}</span>
+              <div className="p-4">
+                <div className="flex">
+                  {/* Left - Card Circle */}
+                  <div className="mr-6">
+                    <div className={`h-14 w-14 rounded-full flex items-center justify-center ${getIssuerBgClass(card.issuer)}`}>
+                      <span className="text-white text-xl font-bold">{getIssuerInitials(card.issuer)}</span>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex-grow flex flex-col">
-                  <div className="flex items-baseline">
-                    <h3 className="text-lg font-medium text-gray-900">{card.name}</h3>
-                    <span className="ml-2 text-sm text-gray-500">•••• {card.last4}</span>
-                  </div>
-                  <div className="flex items-center mt-1">
-                    <span className="text-sm text-gray-500">{card.issuer}</span>
-                    <span className="mx-2 text-gray-300">•</span>
-                    <span className="text-sm text-gray-500">{getCardTypeLabel(card.type)}</span>
-                    <span className="mx-2 text-gray-300">•</span>
-                    <span className="text-sm text-gray-500">Expires {card.expires}</span>
-                  </div>
-                </div>
-                
-                <div className="flex-shrink-0">
-                  <div className="text-gray-400 hover:text-gray-500">
-                    <CardIcon className="h-5 w-5" />
+                  
+                  {/* Main content area */}
+                  <div className="flex-1">
+                    {/* Top row - Name and card number */}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-xl font-medium text-gray-900">{card.name}</h3>
+                        <div className="text-sm text-gray-500 mt-1">{card.issuer}</div>
+                      </div>
+                      
+                      <div className="text-gray-500 flex items-center">
+                        <span className="mx-1">••••</span>
+                        <span>{card.last4}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Bottom row - Card type, expiry and more menu */}
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center text-sm text-gray-500">
+                        <span>{getCardTypeLabel(card.type)}</span>
+                        <span className="mx-2 text-gray-300">•</span>
+                        <span>Expires {card.expires}</span>
+                      </div>
+                      
+                      {/* More menu */}
+                      <button className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-500">
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" stroke="currentColor" strokeWidth="2" />
+                          <path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" stroke="currentColor" strokeWidth="2" />
+                          <path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" stroke="currentColor" strokeWidth="2" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
-          
+        </div>
+        
+        {/* Connect a New Card Button */}
+        <div className="mt-4 border-t pt-4">
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center p-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center w-full p-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                <PlusIcon className="h-5 w-5" />
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+                <PlusIcon className="h-4 w-4" />
               </div>
               <span className="font-medium">Connect a New Card</span>
             </div>
@@ -201,7 +403,6 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
       {/* Modal Overlay */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setIsModalOpen(false)}>
-          {/* Modal Content */}
           <div 
             className="bg-white rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-2xl transform transition-all"
             onClick={e => e.stopPropagation()}
@@ -214,6 +415,12 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {errors.general && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                  {errors.general}
+                </div>
+              )}
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Card Name
@@ -224,9 +431,12 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
                   value={formData.cardName}
                   onChange={handleInputChange}
                   placeholder="e.g. 'Sapphire Reserve'"
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className={`w-full p-3 border ${errors.cardName ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
                   required
                 />
+                {errors.cardName && (
+                  <p className="mt-1 text-xs text-red-600">{errors.cardName}</p>
+                )}
                 <p className="mt-1 text-xs text-gray-500">Enter the name of your card (e.g. "Sapphire Reserve")</p>
               </div>
 
@@ -234,16 +444,26 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Card Number
                 </label>
-                <input
-                  type="text"
-                  name="cardNumber"
-                  value={formData.cardNumber}
-                  onChange={handleInputChange}
-                  placeholder="•••• •••• •••• ••••"
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  maxLength={19}
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="cardNumber"
+                    value={formattedCardNumber}
+                    onChange={handleInputChange}
+                    placeholder="•••• •••• •••• ••••"
+                    className={`w-full p-3 border ${errors.cardNumber ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
+                    maxLength={19}
+                    required
+                  />
+                  {detectedIssuer && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-blue-600 font-medium">
+                      {detectedIssuer}
+                    </div>
+                  )}
+                </div>
+                {errors.cardNumber && (
+                  <p className="mt-1 text-xs text-red-600">{errors.cardNumber}</p>
+                )}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -258,6 +478,7 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
                       onChange={handleInputChange}
                       className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                       required
+                      disabled={detectedIssuer !== null}
                     >
                       <option value="Chase">Chase</option>
                       <option value="American Express">American Express</option>
@@ -279,6 +500,9 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
                       <ChevronDownIcon />
                     </div>
                   </div>
+                  {detectedIssuer && (
+                    <p className="mt-1 text-xs text-blue-600">Issuer detected from card number</p>
+                  )}
                 </div>
                 
                 <div>
@@ -317,7 +541,7 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
                       name="expiryMonth"
                       value={formData.expiryMonth}
                       onChange={handleInputChange}
-                      className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      className={`w-full p-3 appearance-none bg-white border ${errors.expiryMonth ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
                       required
                     >
                       <option value="">Month</option>
@@ -345,7 +569,7 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
                       name="expiryYear"
                       value={formData.expiryYear}
                       onChange={handleInputChange}
-                      className="w-full p-3 appearance-none bg-white border border-gray-300 rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      className={`w-full p-3 appearance-none bg-white border ${errors.expiryYear ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-md pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
                       required
                     >
                       <option value="">Year</option>
@@ -360,6 +584,9 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
                     </div>
                   </div>
                 </div>
+                {errors.expiryMonth && (
+                  <p className="col-span-2 -mt-2 text-xs text-red-600">{errors.expiryMonth}</p>
+                )}
               </div>
 
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mt-2">
@@ -371,7 +598,20 @@ export function CardsList({ cards: initialCards }: { cards: CardDisplayProps['ca
               <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setFormData({
+                      cardName: "",
+                      cardNumber: "",
+                      expiryMonth: "",
+                      expiryYear: "",
+                      issuer: "Chase",
+                      type: "credit"
+                    });
+                    setFormattedCardNumber("");
+                    setDetectedIssuer(null);
+                    setErrors({});
+                  }}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                 >
                   Cancel
