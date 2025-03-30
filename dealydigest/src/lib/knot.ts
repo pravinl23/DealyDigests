@@ -292,7 +292,7 @@ export class KnotClient {
 
 // Export both the class and a singleton instance
 export const knotClient = new KnotClient(
-  process.env.KNOT_API_KEY || "",
-  process.env.KNOT_API_SECRET || ""
+  process.env.KNOT_API_KEY || process.env.KNOT_CLIENT_SECRET || "",
+  process.env.KNOT_API_SECRET || process.env.KNOT_CLIENT_SECRET || ""
 );
 export default knotClient;

@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 
 interface KnotScriptProps {
   onLoad?: () => void;
+  onError?: (error: Error) => void;
 }
 
 // This component initializes the Knot SDK
-export default function KnotScript({ onLoad }: KnotScriptProps) {
+export default function KnotScript({ onLoad, onError }: KnotScriptProps) {
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -33,17 +34,29 @@ export default function KnotScript({ onLoad }: KnotScriptProps) {
           const KnotapiJSModule = await import("knotapi-js");
           const KnotapiJS = KnotapiJSModule.default;
 
+          if (!KnotapiJS) {
+            throw new Error("Failed to load KnotapiJS module");
+          }
+
           // Create a new instance as shown in the docs
           window.knotapi = new KnotapiJS();
 
           console.log("KnotapiJS initialized successfully");
 
+          // Test the instance
+          if (!window.knotapi || typeof window.knotapi.open !== "function") {
+            throw new Error(
+              "KnotapiJS initialized but API methods are missing"
+            );
+          }
+
           setInitialized(true);
           if (onLoad) onLoad();
-        } catch (error) {
-          console.error("Error initializing KnotapiJS:", error);
-          setError(error instanceof Error ? error : new Error(String(error)));
-          // Don't call onLoad if there was an error to prevent further issues
+        } catch (err) {
+          console.error("Error initializing KnotapiJS:", err);
+          const errorObj = err instanceof Error ? err : new Error(String(err));
+          setError(errorObj);
+          if (onError) onError(errorObj);
         }
       };
 
@@ -53,7 +66,14 @@ export default function KnotScript({ onLoad }: KnotScriptProps) {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [initialized, onLoad]);
+  }, [initialized, onLoad, onError]);
+
+  // Add console error display just for debugging
+  useEffect(() => {
+    if (error) {
+      console.error("KnotScript error:", error);
+    }
+  }, [error]);
 
   return null;
 }

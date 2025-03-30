@@ -162,8 +162,7 @@ const KnotLink = () => {
 
         // Get client ID from environment or use hardcoded value
         const clientId =
-          process.env.NEXT_PUBLIC_KNOT_CLIENT_ID ||
-          "310a12cb-54c0-4021-b683-3aa5bc38b718";
+          process.env.KNOT_CLIENT_ID || "310a12cb-54c0-4021-b683-3aa5bc38b718";
 
         console.log("Using client ID:", clientId);
         console.log("Using session ID:", sid);
@@ -416,8 +415,7 @@ const KnotLink = () => {
         <p className="font-mono">SDK Loaded: {sdkLoaded ? "Yes" : "No"}</p>
         <p className="font-mono">
           Client ID:{" "}
-          {process.env.NEXT_PUBLIC_KNOT_CLIENT_ID ||
-            "310a12cb-54c0-4021-b683-3aa5bc38b718"}
+          {process.env.KNOT_CLIENT_ID || "310a12cb-54c0-4021-b683-3aa5bc38b718"}
         </p>
         <p className="font-mono">Product: {selectedProduct}</p>
         <p className="font-mono">Merchant ID: {selectedMerchant}</p>

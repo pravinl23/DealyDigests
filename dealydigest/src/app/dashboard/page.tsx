@@ -2,671 +2,1149 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import {
-  InsightIcon,
-  RecommendationIcon,
-  EntertainmentIcon,
-  Tabs,
-} from "@/components/tabs";
-import { SpendingChart } from "@/components/spending-chart";
-import { TransactionsList } from "@/components/transactions-list";
-import { CardsList } from "@/components/card-display";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import MediaHistorySection from "@/components/MediaHistorySection";
-import RecommendationsSection from "@/components/RecommendationsSection";
-import { MusicIcon } from "lucide-react";
+import { ChevronDown, Music, Video, ShoppingBag } from "lucide-react";
+import KnotScript from "@/components/knot-script";
 
-// Define interfaces
-interface SpendingData {
-  category: string;
-  amount: number;
-  color: string;
-}
-
-interface Transaction {
-  id: string;
-  merchant: string;
-  amount: number;
-  date: string;
-  category: string;
-  description: string;
-  cardName?: string;
-  cardIssuer?: string;
-  cardLast4?: string;
-}
-
-// Default cards data
-const cards = [
-  {
-    id: "card1",
-    type: "credit",
-    name: "Sapphire Reserve",
-    last4: "4567",
-    expires: "03/27",
-    issuer: "Chase",
-  },
-  {
-    id: "card2",
-    type: "credit",
-    name: "Freedom Unlimited",
-    last4: "8901",
-    expires: "05/26",
-    issuer: "Chase",
-  },
-];
-
-const monthlySummary = {
-  totalSpent: 1580.5,
-  topCategory: "Travel",
-  mostUsedCard: "Chase Sapphire Reserve",
-  potentialSavings: 120.25,
-};
+// Types for Knot SDK
+type Product = "card_switcher" | "transaction_link";
 
 export default function DashboardPage() {
   const { user, error, isLoading } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("insights");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [spendingData, setSpendingData] = useState<SpendingData[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
-  const [isAddingTransaction, setIsAddingTransaction] = useState(false);
-  const [formData, setFormData] = useState({
-    merchant: "",
-    amount: "",
-    category: "Dining",
-    description: "",
-  });
-  const [dealsCategory, setDealsCategory] = useState<string>("all");
-  const [isDealsLoading, setIsDealsLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] =
+    useState<Product>("card_switcher");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [knotError, setKnotError] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedMerchant, setSelectedMerchant] = useState<{
+    id: number;
+    name: string;
+  }>({ id: 84, name: "Airbnb" });
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [userCards, setUserCards] = useState<any[]>([]);
+  const [cardsLoading, setCardsLoading] = useState(true);
+  const [cardsError, setCardsError] = useState<string | null>(null);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [sdkError, setSdkError] = useState<string | null>(null);
+  const [connectedMerchants, setConnectedMerchants] = useState([
+    { id: 13, name: "Spotify", connected: true },
+    { id: 16, name: "Netflix", connected: true },
+    { id: 19, name: "DoorDash", connected: true },
+  ]);
+
+  // Sample connected services
+  const connectedServices = [
+    { id: 1, name: "American Airlines", date: "3/30/2025" },
+    { id: 2, name: "Airbnb", date: "3/29/2025" },
+  ];
+
+  // Sample transactions
+  const transactions = [
+    {
+      id: 1,
+      merchant: "Netflix",
+      amount: 15.99,
+      date: "2 days ago",
+      card: "Chase Chase Sapphire Reserve",
+      category: "Entertainment",
+    },
+    {
+      id: 2,
+      merchant: "Starbucks",
+      amount: 7.35,
+      date: "3 days ago",
+      card: "Chase Freedom Unlimited",
+      category: "Dining",
+    },
+    {
+      id: 3,
+      merchant: "Amazon",
+      amount: 49.99,
+      date: "5 days ago",
+      card: "Chase Chase Sapphire Reserve",
+      category: "Shopping",
+    },
+    {
+      id: 4,
+      merchant: "Uber",
+      amount: 24.5,
+      date: "1 week ago",
+      card: "Chase Freedom Unlimited",
+      category: "Travel",
+    },
+    {
+      id: 5,
+      merchant: "DoorDash",
+      amount: 35.2,
+      date: "yesterday",
+      card: "Chase Chase Sapphire Reserve",
+      category: "Dining",
+    },
+  ];
+
+  // Available merchants list
+  const availableMerchants = [
+    { id: 84, name: "Airbnb" },
+    { id: 78, name: "American Airlines" },
+    { id: 45, name: "Walmart" },
+    { id: 44, name: "Amazon" },
+    { id: 40, name: "Instacart" },
+    { id: 36, name: "Uber Eats" },
+    { id: 19, name: "DoorDash" },
+    { id: 16, name: "Netflix" },
+    { id: 13, name: "Spotify" },
+    { id: 12, name: "Target" },
+    { id: 10, name: "Uber" },
+  ];
+
+  // Sample deals for the deals tab
+  const deals = [
+    {
+      id: 1,
+      title: "Earn 5% back on Chase Dining",
+      type: "New Offer",
+      card: "Chase Sapphire Reserve",
+      amount: "5%",
+      expires: "Jun 29, 2025",
+      description:
+        "Use your Chase Sapphire Reserve for dining purchases and earn 5% back.",
+      details:
+        "Valid at select restaurants only. Maximum cash back of $50 per month.",
+    },
+    {
+      id: 2,
+      title: "$50 off $200+ at United Airlines",
+      type: "Limited Time",
+      card: "Chase Sapphire Reserve",
+      amount: "$50",
+      expires: "May 14, 2025",
+      description:
+        "Book a flight with your Chase Sapphire Reserve and get $50 off.",
+      details:
+        "Valid for flights booked directly with United Airlines. Minimum purchase of $200.",
+    },
+    {
+      id: 3,
+      title: "10% Back at Amazon",
+      type: "Limited Time",
+      card: "Freedom Unlimited",
+      amount: "10%",
+      expires: "Apr 30, 2025",
+      description:
+        "Get 10% back on Amazon purchases with your Freedom Unlimited card.",
+      details:
+        "Maximum cash back of $30. Valid for purchases made directly on Amazon.com.",
+    },
+    {
+      id: 4,
+      title: "3 Months Free Disney+",
+      type: "New Offer",
+      card: "Any Chase Card",
+      amount: "3 months",
+      expires: "May 31, 2025",
+      description:
+        "Subscribe to Disney+ and get 3 months free when you pay with your Chase card.",
+      details:
+        "New Disney+ subscribers only. After 3 months, standard subscription fee applies.",
+    },
+  ];
+
+  // Function to fetch user cards
+  const fetchUserCards = useCallback(async () => {
+    try {
+      setCardsLoading(true);
+      setCardsError(null);
+
+      const response = await fetch("/api/cards");
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const userData = await response.json();
+
+      if (userData.credit_cards) {
+        setUserCards(userData.credit_cards);
+      } else {
+        setUserCards([]);
+      }
+    } catch (err) {
+      console.error("Error fetching user cards:", err);
+      setCardsError("Failed to fetch cards. Please try again later.");
+    } finally {
+      setCardsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/api/auth/login?returnTo=/dashboard");
     }
+
+    // Close dropdown when clicking outside
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [user, isLoading, router]);
 
-  // Fetch transactions and chart data
-  const fetchTransactions = async () => {
-    setIsDataLoading(true);
-    try {
-      const response = await fetch("/api/transactions");
-      const data = await response.json();
-      if (data.success) {
-        setTransactions(data.transactions);
-        setSpendingData(data.chartData);
-      }
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-    } finally {
-      setIsDataLoading(false);
-    }
-  };
-
+  // Fetch user's credit cards
   useEffect(() => {
     if (user) {
-      fetchTransactions();
+      fetchUserCards();
     }
-  }, [user]);
+  }, [user, fetchUserCards]);
 
-  const handleFormChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.merchant || !formData.amount) {
-      alert("Please fill in merchant and amount");
-      return;
+  // Create a session for Knot
+  const createSession = useCallback(async () => {
+    if (!user) {
+      setKnotError("You must be logged in to connect with Knot");
+      return null;
     }
 
     try {
-      const response = await fetch("/api/transactions", {
+      setLoading(true);
+      setKnotError(null);
+
+      // Get user ID from Auth0
+      const userId = user.sub || user.id;
+      console.log("Creating Knot session for user:", userId);
+
+      const response = await fetch("/api/knot/create-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          merchant: formData.merchant,
-          amount: parseFloat(formData.amount),
-          category: formData.category,
-          description: formData.description,
+          userId: userId,
+          product: selectedProduct,
         }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        // Clear form
-        setFormData({
-          merchant: "",
-          amount: "",
-          category: "Dining",
-          description: "",
-        });
+      const text = await response.text();
+      let data;
 
-        // Hide form
-        setIsAddingTransaction(false);
-
-        // Refresh transactions
-        fetchTransactions();
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error("Error parsing response as JSON:", parseError);
+        console.error("Raw response:", text);
+        throw new Error(
+          `Invalid JSON response from server: ${text.substring(0, 100)}`
+        );
       }
-    } catch (error) {
-      console.error("Error adding transaction:", error);
+
+      if (!response.ok) {
+        console.error("Session creation failed:", response.status, data);
+        throw new Error(
+          `Failed to create Knot session: ${
+            data.details || data.error || response.statusText
+          }`
+        );
+      }
+
+      const sessionId = data.session_id || data.session;
+      if (!sessionId) {
+        console.error("No session_id in response:", data);
+        throw new Error("Session ID not found in response");
+      }
+
+      console.log("Received session ID:", sessionId);
+      setSessionId(sessionId);
+      return sessionId;
+    } catch (err) {
+      console.error("Error creating session:", err);
+      setKnotError(
+        "Failed to create session: " +
+          (err instanceof Error ? err.message : String(err))
+      );
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [user, selectedProduct]);
+
+  // Handle SDK loading
+  const handleSdkLoad = useCallback(() => {
+    console.log("Knot SDK loaded successfully");
+    setSdkLoaded(true);
+    setSdkError(null);
+  }, []);
+
+  const handleSdkError = useCallback((error: Error) => {
+    console.error("Error loading Knot SDK:", error);
+    setSdkLoaded(false);
+    setSdkError(`Failed to load Knot SDK: ${error.message}`);
+  }, []);
+
+  // Connect accounts with Knot
+  const connectWithKnot = async () => {
+    try {
+      setLoading(true);
+      setKnotError(null);
+
+      if (!sdkLoaded) {
+        setKnotError(
+          "Knot SDK not loaded yet. Please wait a moment and try again."
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Create a session
+      const sid = await createSession();
+      if (!sid) {
+        setLoading(false);
+        return;
+      }
+
+      if (typeof window === "undefined" || !window.knotapi) {
+        setKnotError(
+          "Knot SDK not loaded. Please refresh the page and try again."
+        );
+        setLoading(false);
+        return;
+      }
+
+      const clientId =
+        process.env.NEXT_PUBLIC_KNOT_CLIENT_ID ||
+        "310a12cb-54c0-4021-b683-3aa5bc38b718";
+
+      console.log("Opening Knot with:", {
+        sessionId: sid,
+        clientId,
+        merchantId: selectedMerchant.id,
+        product: selectedProduct,
+      });
+
+      window.knotapi.open({
+        sessionId: sid,
+        clientId: clientId,
+        environment: "development",
+        product: selectedProduct,
+        merchantIds: [selectedMerchant.id],
+        entryPoint: "onboarding",
+        companyName: "DealyDigest",
+        useCategories: true,
+        useSearch: true,
+        onSuccess: (product: any, details: any) => {
+          console.log("Knot success:", product, details);
+          setLoading(false);
+          // Refresh connected services and user cards data
+          fetchUserCards();
+
+          // Add the newly connected merchant to the list
+          if (!connectedMerchants.some((m) => m.id === selectedMerchant.id)) {
+            setConnectedMerchants((prev) => [
+              ...prev,
+              {
+                id: selectedMerchant.id,
+                name: selectedMerchant.name,
+                connected: true,
+              },
+            ]);
+          }
+
+          // Show success toast or notification
+          alert(
+            `Successfully connected to ${
+              details.merchantName || selectedMerchant.name
+            }`
+          );
+        },
+        onError: (product: any, errorCode: any, message: string) => {
+          console.error("Knot Link error:", product, errorCode, message);
+          setKnotError(`Error during Knot connection: ${message}`);
+          setLoading(false);
+        },
+        onExit: () => {
+          console.log("User exited Knot Link");
+          setLoading(false);
+        },
+        onEvent: (product: any, event: any, merchant: any, payload: any) => {
+          console.log("Knot event:", product, event, merchant, payload);
+
+          // If there's a card update event, refresh the cards
+          if (
+            event === "CARD_UPDATED" ||
+            event === "TRANSACTION_SYNC_COMPLETE"
+          ) {
+            fetchUserCards();
+          }
+        },
+      });
+    } catch (err) {
+      console.error("Error opening Knot Link:", err);
+      setKnotError(
+        "Failed to open Knot Link: " +
+          (err instanceof Error ? err.message : String(err))
+      );
+      setLoading(false);
     }
   };
 
-  if (isLoading) {
-    return <div className="text-center py-10">Loading...</div>;
-  }
+  // Generate random content for newly connected merchant
+  const generateRandomContentForMerchant = (merchantName: string) => {
+    const types = [
+      {
+        type: "music",
+        items: [
+          "Blinding Lights",
+          "Save Your Tears",
+          "Levitating",
+          "Stay",
+          "Shivers",
+          "Bad Habits",
+        ],
+      },
+      {
+        type: "movie",
+        items: [
+          "Stranger Things",
+          "Wednesday",
+          "The Crown",
+          "Squid Game",
+          "Ozark",
+          "Money Heist",
+        ],
+      },
+      {
+        type: "order",
+        items: [
+          "Burger & Fries",
+          "Pizza",
+          "Chicken Wings",
+          "Salad Bowl",
+          "Sushi",
+          "Tacos",
+        ],
+      },
+      {
+        type: "purchase",
+        items: [
+          "Echo Dot",
+          "Kindle Paperwhite",
+          "Airpods",
+          "Wireless Charger",
+          "Smart Bulbs",
+          "Bluetooth Speaker",
+        ],
+      },
+    ];
 
-  if (!user) {
-    return <div className="text-center py-10">Redirecting to login...</div>;
-  }
-
-  // Add a new tab for media recommendations
-  const navigationTabs = [
-    {
-      id: "insights",
-      label: "Insights",
-      icon: <InsightIcon className="h-4 w-4" />,
-    },
-    {
-      id: "deals",
-      label: "Deals",
-      icon: <RecommendationIcon className="h-4 w-4" />,
-    },
-    {
-      id: "entertainment",
-      label: "Entertainment",
-      icon: <EntertainmentIcon className="h-4 w-4" />,
-    },
-  ];
-
-  // Define deal categories
-  const dealCategories = [
-    { id: "all", label: "All Deals" },
-    { id: "dining", label: "Dining" },
-    { id: "travel", label: "Travel" },
-    { id: "shopping", label: "Shopping" },
-    { id: "entertainment", label: "Entertainment" },
-  ];
-
-  // Sample deals data
-  const deals = [
-    {
-      id: "deal1",
-      title: "Earn 5% back on Chase Dining",
-      description:
-        "Use your Chase Sapphire Reserve for dining purchases and earn 5% back.",
-      category: "dining",
-      expiryDate: "2025-06-30",
-      cardName: "Chase Sapphire Reserve",
-      imageUrl: "/images/dining.jpg",
-      discountValue: "5%",
-      specialTerms:
-        "Valid at select restaurants only. Maximum cash back of $50 per month.",
-      isLimited: false,
-      isNewOffer: true,
-    },
-    {
-      id: "deal2",
-      title: "$50 off $200+ at United Airlines",
-      description:
-        "Book a flight with your Chase Sapphire Reserve and get $50 off.",
-      category: "travel",
-      expiryDate: "2025-05-15",
-      cardName: "Chase Sapphire Reserve",
-      imageUrl: "/images/travel.jpg",
-      discountValue: "$50",
-      specialTerms:
-        "Valid for flights booked directly with United Airlines. Minimum purchase of $200.",
-      isLimited: true,
-      isNewOffer: false,
-    },
-    {
-      id: "deal3",
-      title: "10% Back at Amazon",
-      description:
-        "Limited time offer: Get 10% back on Amazon purchases with your Freedom Unlimited card.",
-      category: "shopping",
-      expiryDate: "2025-04-30",
-      cardName: "Freedom Unlimited",
-      imageUrl: "/images/shopping.jpg",
-      discountValue: "10%",
-      specialTerms:
-        "Maximum cash back of $30. Valid for purchases made directly on Amazon.com.",
-      isLimited: true,
-      isNewOffer: true,
-    },
-    {
-      id: "deal4",
-      title: "3 Months Free Disney+",
-      description:
-        "Subscribe to Disney+ and get 3 months free when you pay with your Chase card.",
-      category: "entertainment",
-      expiryDate: "2025-07-31",
-      cardName: "Any Chase Card",
-      imageUrl: "/images/streaming.jpg",
-      discountValue: "3 months",
-      specialTerms:
-        "New Disney+ subscribers only. Subscription will auto-renew after free period.",
-      isLimited: false,
-      isNewOffer: true,
-    },
-    {
-      id: "deal5",
-      title: "2x Points at Gas Stations",
-      description:
-        "Earn double points on all gas station purchases this month.",
-      category: "travel",
-      expiryDate: "2025-04-30",
-      cardName: "Freedom Unlimited",
-      imageUrl: "/images/gas.jpg",
-      discountValue: "2x",
-      specialTerms:
-        "Automatic enrollment. Points awarded within 2 billing cycles.",
-      isLimited: true,
-      isNewOffer: false,
-    },
-    {
-      id: "deal6",
-      title: "15% Off at Whole Foods",
-      description: "Get 15% off your entire purchase at Whole Foods Market.",
-      category: "shopping",
-      expiryDate: "2025-05-31",
-      cardName: "Chase Sapphire Reserve",
-      imageUrl: "/images/grocery.jpg",
-      discountValue: "15%",
-      specialTerms: "Maximum discount of $30. In-store purchases only.",
-      isLimited: false,
-      isNewOffer: true,
-    },
-    {
-      id: "deal7",
-      title: "Free Concert Ticket",
-      description:
-        "Buy one concert ticket and get one free at participating venues.",
-      category: "entertainment",
-      expiryDate: "2025-08-31",
-      cardName: "Any Chase Card",
-      imageUrl: "/images/concert.jpg",
-      discountValue: "BOGO",
-      specialTerms:
-        "Available at select venues only. Limit one free ticket per cardholder.",
-      isLimited: true,
-      isNewOffer: false,
-    },
-    {
-      id: "deal8",
-      title: "20% Off at Cheesecake Factory",
-      description: "Enjoy 20% off your bill at The Cheesecake Factory.",
-      category: "dining",
-      expiryDate: "2025-06-15",
-      cardName: "Freedom Unlimited",
-      imageUrl: "/images/restaurant.jpg",
-      discountValue: "20%",
-      specialTerms: "Dine-in only. Cannot be combined with other offers.",
-      isLimited: false,
-      isNewOffer: true,
-    },
-  ];
-
-  // Format date string to a readable format
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(date);
+    const randomType = types[Math.floor(Math.random() * types.length)];
+    return {
+      type: randomType.type,
+      items: randomType.items.slice(0, 3).map((item) => ({
+        title: item,
+        subtitle:
+          randomType.type === "music"
+            ? "The Weeknd"
+            : randomType.type === "movie"
+            ? "S1 E1"
+            : "",
+      })),
+    };
   };
 
-  // Filter deals by category
-  const filteredDeals =
-    dealsCategory === "all"
-      ? deals
-      : deals.filter((deal) => deal.category === dealsCategory);
+  // Render merchant activity tiles
+  const renderMerchantActivityTiles = () => {
+    if (activeTab !== "insights") return null;
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      <main className="flex-1 bg-gray-50 pb-12">
-        <div className="container mx-auto px-4 pt-8">
-          {/* Welcome section */}
-          <div className="mb-8 rounded-xl bg-primary px-8 py-10 text-white">
-            <h1 className="mb-2 text-3xl font-semibold">
-              Welcome back, {user.name || user.email}
-            </h1>
-            <p className="text-gray-300">
-              Let's maximize your card benefits today
-            </p>
+    return (
+      <div className="mt-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Spotify Activity */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Music className="h-5 w-5 text-green-500" />
+              <h3 className="text-lg font-semibold">Spotify Activity</h3>
+            </div>
 
-            <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-xl bg-primary-light p-6 text-white">
-                <h3 className="text-gray-300">Active Cards</h3>
-                <p className="mt-2 text-4xl font-bold">{cards.length}</p>
+            <div className="mb-4">
+              <h4 className="text-gray-500 mb-3">Recently Played</h4>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-md"></div>
+                  <div>
+                    <div className="font-medium">Blinding Lights</div>
+                    <div className="text-sm text-gray-500">The Weeknd</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-md"></div>
+                  <div>
+                    <div className="font-medium">Levitating</div>
+                    <div className="text-sm text-gray-500">Dua Lipa</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-md"></div>
+                  <div>
+                    <div className="font-medium">Save Your Tears</div>
+                    <div className="text-sm text-gray-500">The Weeknd</div>
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <div className="rounded-xl bg-primary-light p-6 text-white">
-                <h3 className="text-gray-300">Recent Transactions</h3>
-                <p className="mt-2 text-4xl font-bold">{transactions.length}</p>
-              </div>
-
-              <div className="rounded-xl bg-primary-light p-6 text-white">
-                <h3 className="text-gray-300">Available Offers</h3>
-                <p className="mt-2 text-4xl font-bold">4</p>
+            <div>
+              <h4 className="text-gray-500 mb-2">Top Genres</h4>
+              <div className="flex flex-wrap gap-2">
+                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                  pop
+                </span>
+                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                  r&b
+                </span>
+                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                  dance pop
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Main content */}
-          <div className="flex flex-col lg:flex-row lg:gap-8">
-            {/* Left column */}
-            <div className="flex-1">
-              <div className="mb-8">
-                <Tabs
-                  tabs={navigationTabs}
-                  activeTab={activeTab}
-                  onChange={setActiveTab}
-                />
-              </div>
-
-              {activeTab === "insights" && (
-                <>
-                  <div className="card mb-8 p-6">
-                    {isDataLoading ? (
-                      <div className="flex items-center justify-center h-[350px]">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-                      </div>
-                    ) : (
-                      <SpendingChart data={spendingData} />
-                    )}
-                  </div>
-
-                  <div className="card p-6">
-                    {isDataLoading ? (
-                      <div className="flex items-center justify-center h-40">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center mb-4">
-                          <h2 className="text-xl font-medium">
-                            Recent Transactions
-                          </h2>
-                          <button
-                            onClick={() =>
-                              setIsAddingTransaction(!isAddingTransaction)
-                            }
-                            className="px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark"
-                          >
-                            {isAddingTransaction ? "Cancel" : "Add Transaction"}
-                          </button>
-                        </div>
-
-                        {isAddingTransaction && (
-                          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                            <h3 className="text-lg font-medium mb-3">
-                              Add New Transaction
-                            </h3>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Merchant
-                                </label>
-                                <input
-                                  type="text"
-                                  name="merchant"
-                                  value={formData.merchant}
-                                  onChange={handleFormChange}
-                                  className="w-full p-2 border border-gray-300 rounded-md"
-                                  required
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Amount ($)
-                                </label>
-                                <input
-                                  type="number"
-                                  name="amount"
-                                  value={formData.amount}
-                                  onChange={handleFormChange}
-                                  className="w-full p-2 border border-gray-300 rounded-md"
-                                  step="0.01"
-                                  min="0"
-                                  required
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Category
-                                </label>
-                                <select
-                                  name="category"
-                                  value={formData.category}
-                                  onChange={handleFormChange}
-                                  className="w-full p-2 border border-gray-300 rounded-md"
-                                >
-                                  <option value="Dining">Dining</option>
-                                  <option value="Travel">Travel</option>
-                                  <option value="Shopping">Shopping</option>
-                                  <option value="Groceries">Groceries</option>
-                                  <option value="Entertainment">
-                                    Entertainment
-                                  </option>
-                                  <option value="Transportation">
-                                    Transportation
-                                  </option>
-                                  <option value="Other">Other</option>
-                                </select>
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Description (Optional)
-                                </label>
-                                <textarea
-                                  name="description"
-                                  value={formData.description}
-                                  onChange={handleFormChange}
-                                  className="w-full p-2 border border-gray-300 rounded-md"
-                                  rows={2}
-                                />
-                              </div>
-
-                              <button
-                                type="submit"
-                                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
-                              >
-                                Save Transaction
-                              </button>
-                            </form>
-                          </div>
-                        )}
-
-                        <TransactionsList transactions={transactions} />
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {activeTab === "deals" && (
-                <div className="card p-6 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-primary">
-                      Available Deals
-                    </h2>
-                    <span className="bg-primary text-white text-sm px-3 py-1 rounded-full">
-                      {filteredDeals.length} Offers
-                    </span>
-                  </div>
-
-                  <p className="text-gray-600">
-                    Exclusive offers and discounts based on your spending
-                    patterns and card benefits.
-                  </p>
-
-                  {/* Categories */}
-                  <div className="flex flex-wrap gap-2">
-                    {dealCategories.map((category) => (
-                      <button
-                        key={category.id}
-                        onClick={() => setDealsCategory(category.id)}
-                        className={`px-3 py-1 text-sm rounded-full ${
-                          dealsCategory === category.id
-                            ? "bg-primary text-white"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                        }`}
-                      >
-                        {category.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Deals grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredDeals.map((deal) => (
-                      <div
-                        key={deal.id}
-                        className="border rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow"
-                      >
-                        <div className="p-4 border-b">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-semibold text-lg">
-                                {deal.title}
-                              </h3>
-                              <p className="text-sm text-gray-500">
-                                {deal.cardName}
-                              </p>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="font-bold text-primary text-xl">
-                                {deal.discountValue}
-                              </span>
-                              {deal.isNewOffer && (
-                                <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full mt-1">
-                                  New Offer
-                                </span>
-                              )}
-                              {deal.isLimited && (
-                                <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full mt-1">
-                                  Limited Time
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4">
-                          <p className="text-sm text-gray-600 mb-3">
-                            {deal.description}
-                          </p>
-
-                          <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
-                            <div className="flex items-center">
-                              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
-                              Active
-                            </div>
-                            <div>Expires: {formatDate(deal.expiryDate)}</div>
-                          </div>
-
-                          <div className="text-xs text-gray-500 mb-4 italic">
-                            {deal.specialTerms}
-                          </div>
-
-                          <Link
-                            href={`/deals/${deal.id}`}
-                            className="block w-full bg-primary text-white rounded-lg text-center px-3 py-2 text-sm hover:bg-primary-dark transition-colors"
-                          >
-                            View Details
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {filteredDeals.length === 0 && (
-                    <div className="text-center py-10 border border-gray-200 rounded-lg">
-                      <RecommendationIcon className="h-12 w-12 mx-auto opacity-20 mb-2" />
-                      <h3 className="text-lg font-medium">
-                        No deals available
-                      </h3>
-                      <p className="text-gray-500">
-                        No deals match your current filter
-                      </p>
-                      <button
-                        onClick={() => setDealsCategory("all")}
-                        className="mt-3 px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark"
-                      >
-                        Show all deals
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === "entertainment" && (
-                <div className="card p-6">
-                  <div className="space-y-8">
-                    <MediaHistorySection />
-                    <RecommendationsSection />
-                  </div>
-                </div>
-              )}
+          {/* Netflix Activity */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Video className="h-5 w-5 text-red-500" />
+              <h3 className="text-lg font-semibold">Netflix Activity</h3>
             </div>
 
-            {/* Right column */}
-            <div className="mt-8 w-full lg:mt-0 lg:w-96">
-              <div className="card mb-8 p-6">
-                <CardsList cards={cards} />
-              </div>
+            <div>
+              <h4 className="text-gray-500 mb-3">Recently Watched</h4>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center text-gray-400">
+                    ?
+                  </div>
+                  <div>
+                    <div className="font-medium">Stranger Things</div>
+                    <div className="text-sm text-gray-500">S4 E9</div>
+                    <div className="flex gap-2 mt-1">
+                      <span className="bg-red-100 text-red-800 text-xs px-1 rounded">
+                        Sci-Fi
+                      </span>
+                      <span className="bg-red-100 text-red-800 text-xs px-1 rounded">
+                        Horror
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="card p-6">
-                <h2 className="mb-6 text-xl font-medium">Monthly Summary</h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Spent:</span>
-                    <span className="font-medium">
-                      ${monthlySummary.totalSpent.toFixed(2)}
-                    </span>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center text-gray-400">
+                    ?
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Top Category:</span>
-                    <span className="font-medium">
-                      {monthlySummary.topCategory}
-                    </span>
+                  <div>
+                    <div className="font-medium">Wednesday</div>
+                    <div className="text-sm text-gray-500">S1 E8</div>
+                    <div className="flex gap-2 mt-1">
+                      <span className="bg-red-100 text-red-800 text-xs px-1 rounded">
+                        Comedy
+                      </span>
+                      <span className="bg-red-100 text-red-800 text-xs px-1 rounded">
+                        Fantasy
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Most Used Card:</span>
-                    <span className="font-medium">
-                      {monthlySummary.mostUsedCard}
-                    </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* DoorDash Activity */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <ShoppingBag className="h-5 w-5 text-red-500" />
+              <h3 className="text-lg font-semibold">DoorDash Activity</h3>
+            </div>
+
+            <div>
+              <h4 className="text-gray-500 mb-3">Recent Orders</h4>
+              <div className="flex items-center justify-center h-32 text-gray-400">
+                No recent orders found
+              </div>
+            </div>
+          </div>
+
+          {/* Dynamically render tiles for other connected merchants */}
+          {connectedMerchants
+            .filter(
+              (m) => m.id !== 13 && m.id !== 16 && m.id !== 19 && m.connected
+            )
+            .map((merchant) => {
+              // Generate random content for the merchant
+              const randomContent = generateRandomContentForMerchant(
+                merchant.name
+              );
+
+              return (
+                <div
+                  key={merchant.id}
+                  className="bg-white rounded-lg border border-gray-200 p-6"
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    {randomContent.type === "music" && (
+                      <Music className="h-5 w-5 text-blue-500" />
+                    )}
+                    {randomContent.type === "movie" && (
+                      <Video className="h-5 w-5 text-purple-500" />
+                    )}
+                    {(randomContent.type === "order" ||
+                      randomContent.type === "purchase") && (
+                      <ShoppingBag className="h-5 w-5 text-orange-500" />
+                    )}
+                    <h3 className="text-lg font-semibold">
+                      {merchant.name} Activity
+                    </h3>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Potential Savings:</span>
-                    <span className="font-bold text-green-600">
-                      ${monthlySummary.potentialSavings.toFixed(2)}
-                    </span>
+
+                  <div>
+                    <h4 className="text-gray-500 mb-3">
+                      {randomContent.type === "music" && "Recently Played"}
+                      {randomContent.type === "movie" && "Recently Watched"}
+                      {randomContent.type === "order" && "Recent Orders"}
+                      {randomContent.type === "purchase" && "Recent Purchases"}
+                    </h4>
+
+                    {randomContent.items.length > 0 ? (
+                      <div className="space-y-4">
+                        {randomContent.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center text-gray-400">
+                              {randomContent.type === "music" ? "♪" : "?"}
+                            </div>
+                            <div>
+                              <div className="font-medium">{item.title}</div>
+                              {item.subtitle && (
+                                <div className="text-sm text-gray-500">
+                                  {item.subtitle}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-32 text-gray-400">
+                        No recent activity found
+                      </div>
+                    )}
                   </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    );
+  };
+
+  // Render recent activity feed
+  const renderRecentActivity = () => {
+    if (activeTab !== "insights") return null;
+
+    return (
+      <div className="mt-12">
+        <h2 className="text-2xl font-semibold mb-6">Recent Activity</h2>
+
+        <div className="space-y-4">
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-start gap-4">
+              <div className="mt-1 text-green-500">
+                <Music className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">Listened to Spotify</h3>
+                    <p className="text-gray-600">
+                      Blinding Lights by The Weeknd
+                    </p>
+                  </div>
+                  <div className="text-sm text-gray-500">2h ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-start gap-4">
+              <div className="mt-1 text-red-500">
+                <Video className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">Watched on Netflix</h3>
+                    <p className="text-gray-600">Stranger Things</p>
+                  </div>
+                  <div className="text-sm text-gray-500">1d ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-start gap-4">
+              <div className="mt-1 text-orange-500">
+                <ShoppingBag className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">Ordered from Amazon</h3>
+                    <p className="text-gray-600">
+                      Echo Dot (5th Gen), Kindle Paperwhite
+                    </p>
+                  </div>
+                  <div className="text-sm text-gray-500">6d ago</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Redirecting to login...
+      </div>
+    );
+  }
+
+  // Render available deals based on the active tab
+  const renderDeals = () => {
+    return (
+      <div className="mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-semibold">Available Deals</h2>
+          <span className="bg-slate-800 text-white text-sm px-3 py-1 rounded-full">
+            8 Offers
+          </span>
+        </div>
+        <p className="mb-4 text-gray-600">
+          Exclusive offers and discounts based on your spending patterns and
+          card benefits.
+        </p>
+
+        <div className="flex gap-2 mb-6">
+          <button className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm">
+            All Deals
+          </button>
+          <button className="bg-transparent border border-gray-300 px-4 py-2 rounded-full text-sm">
+            Dining
+          </button>
+          <button className="bg-transparent border border-gray-300 px-4 py-2 rounded-full text-sm">
+            Travel
+          </button>
+          <button className="bg-transparent border border-gray-300 px-4 py-2 rounded-full text-sm">
+            Shopping
+          </button>
+          <button className="bg-transparent border border-gray-300 px-4 py-2 rounded-full text-sm">
+            Entertainment
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {deals.map((deal) => (
+            <div
+              key={deal.id}
+              className="border border-gray-200 rounded-lg overflow-hidden"
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">{deal.title}</h3>
+                    <p className="text-sm text-gray-500">{deal.card}</p>
+                  </div>
+                  <div className="text-xl font-bold">{deal.amount}</div>
+                </div>
+
+                <div className="mb-4">
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      deal.type === "New Offer"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {deal.type}
+                  </span>
+                </div>
+
+                <p className="mb-4 text-sm">{deal.description}</p>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-gray-500">
+                    {deal.type === "Limited Time" && (
+                      <div>
+                        Valid at select restaurants only. Maximum cash back of
+                        $50 per month.
+                      </div>
+                    )}
+                    <div>Expires: {deal.expires}</div>
+                  </div>
+                  <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm">
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+
+      {/* Navigation Tabs */}
+      <div className="border-b border-gray-200 mb-8">
+        <div className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab("insights")}
+            className={`pb-4 px-2 ${
+              activeTab === "insights"
+                ? "border-b-2 border-slate-900 font-medium"
+                : "text-gray-500"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+              </svg>
+              Insights
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("deals")}
+            className={`pb-4 px-2 ${
+              activeTab === "deals"
+                ? "border-b-2 border-slate-900 font-medium"
+                : "text-gray-500"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+              Deals
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("entertainment")}
+            className={`pb-4 px-2 ${
+              activeTab === "entertainment"
+                ? "border-b-2 border-slate-900 font-medium"
+                : "text-gray-500"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+              </svg>
+              Entertainment
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Account Connection Section (Only visible on Insights tab) */}
+      {activeTab === "insights" && (
+        <div className="bg-white rounded-lg border border-gray-200 p-8 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="md:col-span-1">
+              <h3 className="text-lg font-semibold mb-2">Connected Services</h3>
+              <div className="space-y-1">
+                {connectedServices.map((service) => (
+                  <div
+                    key={service.id}
+                    className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm inline-block mr-2 mb-2"
+                  >
+                    {service.name}{" "}
+                    <span className="text-xs text-gray-600">
+                      {service.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="md:col-span-3">
+              <h2 className="text-xl font-semibold mb-4">
+                Connect your accounts
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Securely connect your financial accounts to unlock personalized
+                deals based on your spending habits.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div className="mb-2">Select product:</div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      className={`border rounded-lg py-3 px-4 text-center ${
+                        selectedProduct === "card_switcher"
+                          ? "bg-blue-50 border-blue-200"
+                          : "bg-white border-gray-200"
+                      }`}
+                      onClick={() => setSelectedProduct("card_switcher")}
+                    >
+                      Card Switcher
+                    </button>
+                    <button
+                      className={`border rounded-lg py-3 px-4 text-center ${
+                        selectedProduct === "transaction_link"
+                          ? "bg-blue-50 border-blue-200"
+                          : "bg-white border-gray-200"
+                      }`}
+                      onClick={() => setSelectedProduct("transaction_link")}
+                    >
+                      Transaction Link
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2">Select a merchant to connect:</div>
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      className="w-full flex items-center justify-between border border-gray-200 rounded-lg p-3"
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                    >
+                      <span>
+                        {selectedMerchant.name} (ID: {selectedMerchant.id})
+                      </span>
+                      <ChevronDown className="h-5 w-5 text-gray-500" />
+                    </button>
+
+                    {dropdownOpen && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {availableMerchants.map((merchant) => (
+                          <button
+                            key={merchant.id}
+                            className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                              selectedMerchant.id === merchant.id
+                                ? "bg-blue-50"
+                                : ""
+                            }`}
+                            onClick={() => {
+                              setSelectedMerchant(merchant);
+                              setDropdownOpen(false);
+                            }}
+                          >
+                            {merchant.name} (ID: {merchant.id})
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="bg-slate-900 text-white px-6 py-4 rounded-lg font-medium w-full"
+                onClick={connectWithKnot}
+                disabled={loading || !sdkLoaded}
+              >
+                {loading
+                  ? "Connecting..."
+                  : !sdkLoaded
+                  ? "Loading Knot SDK..."
+                  : "Connect Your Accounts with Knot"}
+              </button>
+
+              {knotError && (
+                <div className="mt-3 text-red-500 text-sm">{knotError}</div>
+              )}
+
+              {sdkError && (
+                <div className="mt-3 text-red-500 text-sm">{sdkError}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content */}
+      {activeTab === "insights" && (
+        <>
+          {/* Merchant Activity Tiles */}
+          {renderMerchantActivityTiles()}
+
+          {/* Recent Activity Feed */}
+          {renderRecentActivity()}
+
+          {/* Transactions Section */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Your Cards</h2>
+                <button
+                  onClick={fetchUserCards}
+                  className="text-blue-500 text-sm hover:underline"
+                >
+                  Refresh
+                </button>
+              </div>
+              <div className="border border-gray-200 rounded-lg p-6 min-h-[200px]">
+                {cardsLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                  </div>
+                ) : cardsError ? (
+                  <div className="flex items-center justify-center h-full text-red-500">
+                    {cardsError}
+                  </div>
+                ) : userCards.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                    <p>No cards found</p>
+                    <p className="text-sm mt-2">
+                      Connect with Knot to add your cards
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {userCards.map((card, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">
+                              {card.name || "Credit Card"}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              •••• {card.last4 || "****"}
+                              {card.expiry && ` • Expires: ${card.expiry}`}
+                            </div>
+                          </div>
+                          <div className="text-sm font-medium">
+                            {card.card_type || "Card"}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Recent Transactions</h2>
+                <button className="bg-slate-900 text-white px-3 py-1 rounded-lg text-sm">
+                  Add
+                </button>
+              </div>
+
+              <h2 className="mb-2 font-medium">Recent Transactions</h2>
+
+              <div className="space-y-4">
+                {transactions.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="border border-gray-200 rounded-lg p-4"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-md bg-purple-500 flex items-center justify-center text-white">
+                          {tx.merchant.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="font-medium">{tx.merchant}</div>
+                          <div className="text-sm text-gray-500">
+                            {tx.card} • {tx.date}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium">
+                          ${tx.amount.toFixed(2)}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {tx.category}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === "deals" && renderDeals()}
+      {activeTab === "entertainment" && (
+        <div className="py-8 text-center">
+          <h2 className="text-xl font-semibold mb-4">
+            Entertainment Recommendations
+          </h2>
+          <p>
+            Coming soon! Entertainment recommendations based on your spending
+            habits.
+          </p>
+        </div>
+      )}
+
+      {/* Include Knot Script */}
+      <KnotScript onLoad={handleSdkLoad} onError={handleSdkError} />
     </div>
   );
 }
